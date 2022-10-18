@@ -1,0 +1,36 @@
+Labeling and description of the file DataEigenmikeDampedRoom10oct.hdf5
+"i" is related to the index of the channel in the file, it starts at 0 as a python index
+"file" is related to the file stored in the computer provided with the eigenmike, before storing it in the file
+
+| i  	 | r     | azim | elev | file  	    	| Remarks |
+| ------ | ----- | ---- | ---- | -------------- | ------- |
+| 0,1,2  | 4.008 | 33   | 0    | pos1 pos2 pos3 | measurement repeated 3 times, might have some rattling due to the loudspeaker stand |
+| 3,4,5  | 3.583 | 11   | 6    | pos4 pos5 pos6 | measurement repeated 3 times |
+| 6  	 | 3.715 | 12   | 17   | pos7           | same position as 3,4,5 but on the ground |
+| 7  	 | 3.658 | -23  | 6    | pos8           |  |
+| 8  	 | 3.835 | -23  | 12   | pos9           | same position as but on the ground |
+| 9  	 | 2.084 | -30  | 9    | pos10 	    	|  |
+| 10     | 1.002 | -37  | 22   | pos12 	    	|  |
+| 11 	 | 1.414 | -32  | 51   | pos13 	    	| same position as 10 but on the ground |
+| 12 	 | 2.155 | -34  | 33   | pos14 	    	| same position as 9 but on the ground |
+| 13 	 | 4.140 | 29   | 14   | pos15 	    	| same position as 0,1,2 but on the ground |
+| 14  	 | 3.666 | -108 | 17   | pos16 	    	| same position as 15 but on the ground |
+| 15 	 | 3.570 | -109 | 5    | pos17 	    	|  |
+
+
+This describes the room, seen from above, the numbers are referring to the "i" value of the table above,
+on one line the cross describes the position, and the numbers are referring to that cross
+ _____________________________
+|			     X| 	O,1,2,13
+|			      | 
+|			      |
+|			     X| 	3,4,5,6
+|	M ->		      | 	M = EigenMike, 32 channel microphone, directed to the right (as described bu the arrow->)
+|		X	      | 	10,11
+|		       X      | 	9,12
+|			     X| 	7,8
+|			      |
+|			      |
+|			      |
+|X			      | 	14,15
+|______________________DOOR___|
