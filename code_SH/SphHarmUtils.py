@@ -6,6 +6,8 @@ import matplotlib as mpl
 from sklearn.linear_model import RidgeCV
 from math import factorial
 from scipy.special import legendre
+import cvxpy as cp
+import time
 
 
 def get_eigenmike_grid(plot=False):
@@ -245,7 +247,7 @@ def sph_harmonics(m, n, az, co, kind="complex"):
 
 def spatialFT(data, position_grid, grid_type='cart', order_max=10, kind="complex",
               spherical_harmonic_bases=None, weight=None,
-              leastsq_fit=False, regularised_lstsq_fit=False):
+              leastsq_fit=False, regularised_lstsq_fit=False, MLS=False):
     """Perform spatial Fourier transform.
     Parameters
     ----------
@@ -278,9 +280,9 @@ def spatialFT(data, position_grid, grid_type='cart', order_max=10, kind="complex
         :param grid_type:
     """
     # Justin adding
-    if grid_type=='cart':
+    if grid_type == 'cart':
         azi, elev, r = cart2sph(position_grid[0], position_grid[1], position_grid[2])
-    elif grid_type=='sphe':
+    elif grid_type == 'sphe':
         azi, elev, r = position_grid[0], position_grid[1], position_grid[2]
 
     if spherical_harmonic_bases is None:
@@ -288,11 +290,102 @@ def spatialFT(data, position_grid, grid_type='cart', order_max=10, kind="complex
             order_max, azi, elev, kind=kind
         )
     if leastsq_fit:
-        return np.linalg.lstsq(spherical_harmonic_bases, data,rcond=None)[0]#, spherical_harmonic_bases,azi, elev
+        return np.linalg.lstsq(spherical_harmonic_bases, data, rcond=None)[0]  # , spherical_harmonic_bases,azi, elev
+
+    # Justin custom solver, magnitude least squares
+    if MLS:
+        ''' Example adapted from https://www.cvxpy.org/examples/basic/least_squares.html'''
+        'Not possible to give the code any hint in the beginning, but the warm start is using the previous result, ' \
+        'it might be already what is mentioned in paper 39 '
+
+        print('Using Magnitude least squares')
+
+
+
+        '''Try 1 : for loop over frequencies -> impossible because way too long, even for one only frequency bin'''
+        # Problem data.
+        # Y will be the spherical basis
+        Y = spherical_harmonic_bases
+
+        # h will be the hrtf set
+        h = data  # otherwise cannot handle complex values
+        # frequency dependent factor
+        i_fc = 1  # 256  # corresponds to 2kHz with fs = 32kHz and Nfft = 4096
+        Lambda = np.zeros(np.shape(h)[1])
+        Lambda[0:i_fc] = np.ones(i_fc)
+
+        # has to be solved for each frequency bin
+        solution = np.zeros((np.shape(h)[0], np.shape(Y)[1]))
+        for i in range(len(Lambda)):
+            # Define and solve the CVXPY problem.
+            w = cp.Variable(np.shape(Y)[1])  # could create 2 variables and the condition abs(x) == y ?
+            # trying to initialize -> no difference in running time
+            # if i != 0 :
+            #     w.value = solution[i-1]
+
+            cost = Lambda[i] * cp.sum_squares(Y @ w - h[:, i]) + (1 - Lambda[i]) * cp.sum_squares(
+                cp.abs(Y @ w) - cp.abs(h[:, i]))  # not taking the absolute value of x here but should take it
+            # constraints = [0 <= x, x <= 1]
+            prob = cp.Problem(cp.Minimize(cost))
+            print("Solving the inverse problem nb " + str(i))
+
+            # trying to time the operation
+            start = time.time()
+            prob.solve()
+            end = time.time()
+            delta = end - start
+            print("solving took " + str(delta) + " s")
+            solution[i] = w.value
+            # TOO LONG TO RUN + not running if abs value still here
+
+        '''Try 2 : 3D matrices -> impossible because cost function cannot be a matrix'''
+        # # Problem data.
+        # # Y will be the spherical basis
+        # Y = spherical_harmonic_bases
+        # # h will be the hrtf set
+        # h = data  # otherwise cannot handle complex values
+        # # frequency dependent factor
+        # i_fc = 1  # 256  # corresponds to 2kHz with fs = 32kHz and Nfft = 4096
+        # Lambda = np.zeros(np.shape(h)[1])
+        # Lambda[0:i_fc] = np.ones(i_fc)
+
+        # # other try with 3D matrices
+        # w = cp.Variable((np.shape(Y)[1], np.shape(h)[1]))
+        # cost = Lambda * cp.sum_squares(Y @ w - h) + (1 - Lambda) * cp.sum_squares(
+        #     cp.abs(Y) @ w - cp.abs(h))  # not taking the absolute value of x here but should take it
+        # constraints = [0 <= x, x <= 1]
+
+        # # cannot have a cost matrix, but a cost should be a scalar
+        # solution = np.zeros(np.shape(h))
+        # for i in range(len(Lambda)):
+        #     prob = cp.Problem(cp.Minimize(cost[i]))
+        #     prob.solve()
+        #     solution[i] = w.value
+
+        '''Try 3 mapping complex to non complex values'''  # Much faster if still no absolute value in the formula
+        # n_harm = spherical_harmonic_bases.shape[-1]
+        # Y = np.real(stack_real_imag_Y(spherical_harmonic_bases))
+        # h = np.concatenate((data.real, data.imag))
+        # i_fc = 256  # corresponds to 2kHz with fs = 32kHz and Nfft = 4096
+        # Lambda = np.zeros(np.shape(h)[1])
+        # Lambda[0:i_fc] = np.ones(i_fc)
+        # solution = np.zeros((np.shape(data)[0], np.shape(spherical_harmonic_bases)[1]), dtype=np.complex_)
+        # for i in range(len(Lambda)):
+        #     # Define and solve the CVXPY problem.
+        #     w = cp.Variable(np.shape(Y)[1])  # could create 2 variables and the condition abs(x) == y ?
+        #     cost = Lambda[i] * cp.sum_squares(Y @ w - h[:, i]) + (1 - Lambda[i]) * cp.sum_squares(
+        #         cp.abs(Y @ w) - cp.abs(h[:, i]))  # TODO(might be wrong, replacing the abs by non abs and concatenating the complex into real values to make it dcp)
+        #     prob = cp.Problem(cp.Minimize(cost))
+        #     # The optimal objective value is returned by `prob.solve()`.
+        #     print("Solving the inverse problem nb " + str(i))
+        #     prob.solve()
+        #     solution[i] = w.value[:n_harm]+1j*w.value[n_harm:]
+
+        return np.dot(np.transpose(solution), data)
 
     if regularised_lstsq_fit:
         # i assume this creates the condition/regularization
-        reg = RidgeCV(cv=5, alphas=np.geomspace(1, 1e-7, 50), fit_intercept=True) 
+        reg = RidgeCV(cv=5, alphas=np.geomspace(1, 1e-7, 50), fit_intercept=True)
         # reshaping the data
         data = np.concatenate((data.real, data.imag))
         # getting the order
@@ -1165,23 +1258,24 @@ def point_source_spherical_coefficients(order_max,
             ctr = ctr + 1
     return Pnm
 
+
 def reverse_nm(SH_max_order):
-    nm = (SH_max_order+1)**2
-    n_list = np.arange(0, SH_max_order+1)
+    nm = (SH_max_order + 1) ** 2
+    n_list = np.arange(0, SH_max_order + 1)
     nm_indexes_reversed = np.array([])
-    for n in range(0,SH_max_order+1):
-        nm_indexes_reversed = np.concatenate((nm_indexes_reversed, np.flip(np.arange( n**2,(n+1)**2))))
+    for n in range(0, SH_max_order + 1):
+        nm_indexes_reversed = np.concatenate((nm_indexes_reversed, np.flip(np.arange(n ** 2, (n + 1) ** 2))))
     return nm_indexes_reversed.astype(int)
 
-def get_n_m(nm,Nmax):
-    for n in range(0,Nmax+1):
-        if nm in range(n**2,(n+1)**2):
-            m = nm-n**2
-            return n, m-n
+
+def get_n_m(nm, Nmax):
+    for n in range(0, Nmax + 1):
+        if nm in range(n ** 2, (n + 1) ** 2):
+            m = nm - n ** 2
+            return n, m - n
     return None
+
 
 """
 Trying to calculate the spherical harmonics basis coefficients to know what code is right of wrong (sofia or not)
 """
-
-

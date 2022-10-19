@@ -13,7 +13,7 @@ import soundfile as sf
 sys.path.insert(0, "/Users/justinsabate/ThesisPython/code_SH")
 
 # Initializations
-N = 4
+N = 1  # 4 changed for MLS
 
 measurementFileName = 'database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
 
@@ -22,7 +22,7 @@ extension = '.wav'
 start_time = 0
 end_time = 10
 real_time = 0
-HRTF_refinement = 1  # from [11]
+HRTF_refinement = 0  # from [11]
 tapering_win = 1  # from soud field analysis toolbox + cf [36]
 eq = 1  # from sound field analysis toolbox + cf [23], could probably be calculated from HRTF but calculated from a sphere (scattering calculations)
 
@@ -71,7 +71,7 @@ if grid_plot:
 
 ### HRTF set extraction
 
-HRIR = io.read_SOFA_file("./database/HRIR TH Koln/HRIR_FULL2DEG.sofa")
+HRIR = io.read_SOFA_file("./database/HRIR TH Koln/HRIR_L2702.sofa")  # changed for MLS"./database/HRIR TH Koln/HRIR_FULL2DEG.sofa"
 fs_h = int(HRIR.l.fs)
 HRIR_l_signal = HRIR.l.signal
 HRIR_r_signal = HRIR.r.signal
@@ -129,7 +129,7 @@ else:
     print('non resampled')
 
 
-# Taking 50ms of the RIR signal
+# Taking 50ms/100ms of the RIR signal
 # tries : 6000 vs 6600 for the first index of the RIR (before resampling)
 nstart = int(6400/fs_h*fs_min)
 nend = int(nstart + 0.1 * fs_min)
@@ -150,7 +150,7 @@ while 2 ** i < nend - nstart:
         break
 
 NFFT = 2 ** i  # might be a cause for a very long lasting run of the code, that is why it's printed
-# NFFT = 2*NFFT # to have more precision
+
 NFFT = 4096
 print('Nfft=' + str(NFFT))
 
@@ -236,8 +236,9 @@ Hnm = np.stack(  # 2 sides, L and R
             kind="complex",
             spherical_harmonic_bases=None,
             weight=None,
-            leastsq_fit=True,
-            regularised_lstsq_fit=False
+            leastsq_fit=False,
+            regularised_lstsq_fit=False,
+            MLS=True
         ),
         spatialFT(
             HRTF_R,
@@ -247,8 +248,9 @@ Hnm = np.stack(  # 2 sides, L and R
             kind="complex",
             spherical_harmonic_bases=None,
             weight=None,
-            leastsq_fit=True,
-            regularised_lstsq_fit=False
+            leastsq_fit=False,
+            regularised_lstsq_fit=False,
+            MLS=True
         ),
     ]
 )
@@ -265,7 +267,8 @@ Pnm = spatialFT(  # Pnm : Spatial Fourier Coefficients with nm coeffs in rows an
     spherical_harmonic_bases=None,
     weight=None,
     leastsq_fit=True,
-    regularised_lstsq_fit=False  # not nice result, don't know why
+    regularised_lstsq_fit=False,  # not nice result, don't know why
+    MLS=False
 )
 
 ''' Radial filter + smoothing of the coefficients'''
@@ -439,15 +442,15 @@ else:
     'measurements DataEigenmikeDampedRoom10oct.hdf5, ' \
     'it depends on the resampling, usually if we lower the sampling frequency it has to go up'
 
-# max = np.maximum(np.max(np.abs(sl_out)), np.max(np.abs(sr_out)))
-# print(max)
-
-if fs_min == 32000:
-    max = 0.107 # sampling freq : 32 kHz
-elif fs_min == 48000:
-    max = 0.209  # sampling freq : 48 kHz
-else:
-    max = 0.209
+max = np.maximum(np.max(np.abs(sl_out)), np.max(np.abs(sr_out)))
+print(max)
+# TODO(change this, comment above and uncomment below, this is just a try with other HRTF set+ other values for N)
+# if fs_min == 32000:
+#     max = 0.107 # sampling freq : 32 kHz
+# elif fs_min == 48000:
+#     max = 0.209  # sampling freq : 48 kHz
+# else:
+#     max = 0.209
 # needs to be constant to be able to encode the distance (have different gains in different positions)
 
 sl_out, sr_out = sl_out / max, sr_out / max

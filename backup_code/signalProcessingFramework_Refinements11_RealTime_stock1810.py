@@ -10,7 +10,7 @@ from code_SH.SphHarmUtils import *
 import h5py
 import soundfile as sf
 
-sys.path.insert(0, "/Users/justinsabate/ThesisPython/code_SH")
+sys.path.insert(0, "/code_SH")
 
 # Initializations
 N = 4
@@ -71,7 +71,7 @@ if grid_plot:
 
 ### HRTF set extraction
 
-HRIR = io.read_SOFA_file("./database/HRIR TH Koln/HRIR_FULL2DEG.sofa")
+HRIR = io.read_SOFA_file("../database/HRIR TH Koln/HRIR_FULL2DEG.sofa")
 fs_h = int(HRIR.l.fs)
 HRIR_l_signal = HRIR.l.signal
 HRIR_r_signal = HRIR.r.signal

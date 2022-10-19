@@ -6,7 +6,7 @@ import sys
 
 from sound_field_analysis.process import rfi
 
-sys.path.insert(0, "/Users/justinsabate/ThesisPython/code_SH")
+sys.path.insert(0, "/code_SH")
 from code_SH.SphHarmUtils import *
 import h5py
 # needed for debugging
@@ -44,7 +44,7 @@ grid = g['received_grid_positions']  # size 3 (x,y,z) x 86 (microphone)
 
 ### HRTF set extraction
 if hrtf_process:
-    HRIR = io.read_SOFA_file("./database/HRIR TH Koln/HRIR_L2702.sofa")
+    HRIR = io.read_SOFA_file("../database/HRIR TH Koln/HRIR_L2702.sofa")
     fs_h = int(HRIR.l.fs)
     NFFT = HRIR.l.signal.shape[-1]
 else:

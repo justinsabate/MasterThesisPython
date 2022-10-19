@@ -7,8 +7,8 @@ import soundfile as sf
 #########################
 # Reading the wav files #
 #########################
-data, fs = librosa.load('./wavfiles/BluesA_GitL.wav', sr=None, mono=True,duration=3, dtype=np.float32)
-HRIR, fsconvolve = librosa.load('./wavfiles/exHRIR2.wav', sr=None, mono=False, dtype=np.float32)
+data, fs = librosa.load('../wavfiles/BluesA_GitL.wav', sr=None, mono=True, duration=3, dtype=np.float32)
+HRIR, fsconvolve = librosa.load('../wavfiles/exHRIR2.wav', sr=None, mono=False, dtype=np.float32)
 
 ##############
 # Resampling #

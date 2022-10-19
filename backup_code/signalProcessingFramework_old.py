@@ -5,7 +5,7 @@ from sound_field_analysis import io  # to read HRTF set : sofa file
 from code_SH.SphHarmUtils import *
 import h5py
 import soundfile as sf
-sys.path.insert(0, "/Users/justinsabate/ThesisPython/code_SH")
+sys.path.insert(0, "/code_SH")
 
 # Initializations
 N                           = 4
@@ -41,7 +41,7 @@ grid = g['received_grid_positions']  # size 3 (x,y,z) x 86 (microphone)
 
 ### HRTF set extraction
 
-HRIR = io.read_SOFA_file("./database/HRIR TH Koln/HRIR_L2702.sofa")
+HRIR = io.read_SOFA_file("../database/HRIR TH Koln/HRIR_L2702.sofa")
 fs_h = int(HRIR.l.fs)
 NFFT = HRIR.l.signal.shape[-1]  # TODO(might be able to change this)
 # NFFT = 1024
