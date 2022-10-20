@@ -10,19 +10,22 @@ from code_SH.SphHarmUtils import *
 import h5py
 import soundfile as sf
 
+from moving_Source.MovSrcUtils import moving_convolution
+
 sys.path.insert(0, "/Users/justinsabate/ThesisPython/code_SH")
 
 # Initializations
-N = 1  # 4 changed for MLS TODO(change this to 4 when inverse pb working)
-
 measurementFileName = 'database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
 
-signal_name = 'BluesA_GitL'  # without file extension, in wavfiles folder
+signal_name = 'BluesA_Voc'  # without file extension, in wavfiles folder
 extension = '.wav'
+channel = 7  # channel of the measurement that is being used : position
+
 start_time = 0
-end_time = 10
-real_time = 0
-HRTF_refinement = 0  # from [11]
+end_time = 40
+
+N = 4
+HRTF_refinement = 1  # from [11]
 tapering_win = 1  # from soud field analysis toolbox + cf [36]
 eq = 1  # from sound field analysis toolbox + cf [23], could probably be calculated from HRTF but calculated from a sphere (scattering calculations)
 
@@ -34,10 +37,11 @@ HRTF_refinement_plot = 0
 grid_plot = 0
 DRIR_plot = 0
 
-rotation_sound_field_deg = 0
+
+rotation_sound_field_deg = np.arange(0, 360, 10)
 amp_maxdB = 18  # for the radial filter see ref [13] ch 3.6.6 and 3.7.3.3
 Nwin = 512  # for the real time processing, lower : artifacts, higher : possible delay
-channel = 10  # channel of the measurement that is being used
+
 sampling_frequency = 32000  # below, one can clearly hear the difference
 
 '''Mandatory conditions'''
@@ -236,9 +240,9 @@ Hnm = np.stack(  # 2 sides, L and R
             kind="complex",
             spherical_harmonic_bases=None,
             weight=None,
-            leastsq_fit=False,
+            leastsq_fit=True,
             regularised_lstsq_fit=False,
-            MLS=True
+            MLS=False
         ),
         spatialFT(
             HRTF_R,
@@ -248,9 +252,9 @@ Hnm = np.stack(  # 2 sides, L and R
             kind="complex",
             spherical_harmonic_bases=None,
             weight=None,
-            leastsq_fit=False,
+            leastsq_fit=True,
             regularised_lstsq_fit=False,
-            MLS=True
+            MLS=False
         ),
     ]
 )
@@ -358,37 +362,37 @@ if radial_plot:
 # Compute for each frequency bin
 # Orientation
 alpha = np.deg2rad(rotation_sound_field_deg)
-print(alpha)
+print('Computing for 360° of head rotation')
+# print(alpha)
 
 """
 Complex convolution : Has to take the opposite of the m but not the n cf paper [12] (justin's references)
 """
 
 nm_reversed_m = reverse_nm(N)
+Sl = np.zeros((len(alpha), len(freq)),dtype='complex')
+Sr = np.zeros((len(alpha), len(freq)),dtype='complex')
+for i in range(len(alpha)):
+    for nm in range(0, nm_size):  # nm (order and which spherical harmonic function in the order)
+        n, m = get_n_m(nm, N)  # N is the maximum order to reach for n
+        am = (-1) ** m
+        dn_am_Pnm_HnmL_exp = dn[n] * am * Pnm[nm_reversed_m[nm]] * Hnm[0][nm] * np.exp(-1j * m * alpha[i])
+        dn_am_Pnm_HnmR_exp = dn[n] * am * Pnm[nm_reversed_m[nm]] * Hnm[1][nm] * np.exp(-1j * m * alpha[i])
+        Sl[i] = np.add(Sl[i], dn_am_Pnm_HnmL_exp)
+        Sr[i] = np.add(Sr[i], dn_am_Pnm_HnmR_exp)
 
-Sl = np.zeros(np.shape(freq))
-Sr = np.zeros(np.shape(freq))
-
-for nm in range(0, nm_size):  # nm (order and which spherical harmonic function in the order)
-    n, m = get_n_m(nm, N)  # N is the maximum order to reach for n
-    am = (-1) ** m
-    dn_am_Pnm_HnmL_exp = dn[n] * am * Pnm[nm_reversed_m[nm]] * Hnm[0][nm] * np.exp(-1j * m * alpha)
-    dn_am_Pnm_HnmR_exp = dn[n] * am * Pnm[nm_reversed_m[nm]] * Hnm[1][nm] * np.exp(-1j * m * alpha)
-    Sl = np.add(Sl, dn_am_Pnm_HnmL_exp)
-    Sr = np.add(Sr, dn_am_Pnm_HnmR_exp)
-
-# plots for debug
-if freq_output_plot:
-    fig, ax = plt.subplots()
-    ax.plot(freq, 10 * np.log10(abs(Sl)), label='Left ear signal')
-    ax.plot(freq, 10 * np.log10(abs(Sr)), label='Right ear signal')
-    ax.set_xscale('log')
-    plt.legend()
-    # ax.set_ylim(-100, -50)
-    plt.xlabel('Frequency (Hz)')
-    plt.ylabel('Amplitude (dB)')
-    plt.title('Frequency domain signal obtained after spherical convolution')
-    plt.show()
+    # plots for debug
+    if freq_output_plot:
+        fig, ax = plt.subplots()
+        ax.plot(freq, 10 * np.log10(abs(Sl[i])), label='Left ear signal')
+        ax.plot(freq, 10 * np.log10(abs(Sr[i])), label='Right ear signal')
+        ax.set_xscale('log')
+        plt.legend()
+        # ax.set_ylim(-100, -50)
+        plt.xlabel('Frequency (Hz)')
+        plt.ylabel('Amplitude (dB)')
+        plt.title('Frequency domain signal obtained after spherical convolution')
+        plt.show()
 
 ''' iFFT '''
 
@@ -397,71 +401,34 @@ sl, sr = np.fft.irfft(Sl, NFFT), np.fft.irfft(Sr, NFFT)
 
 ''' Convolution '''
 
-if not real_time:
-    sl_out, sr_out = np.transpose(scipy.signal.fftconvolve(sl, s)), np.transpose(scipy.signal.fftconvolve(sr, s))
-else:
-    Nshift = Nwin // 2  # for overlap
+speed = len(rotation_sound_field_deg)//2
+sl_out = moving_convolution(sl, s, speed) # sl is of shape [nb of directions x signal size]
+sr_out = moving_convolution(sr, s, speed)
 
-    # zeropadd signal to match nb of windows
-    if np.shape(s)[0] % Nwin:  # if not multiple of Nwin
-        s = np.concatenate((s, np.zeros(Nwin - (np.shape(s)[0] % Nwin))), axis=0)
-        print('signal zero padded')
-
-    # zeropadd signal to add Nshift zeros in the end - FOR OVERLAP ADD
-    s = np.concatenate((s, np.zeros(Nshift)), axis=0)
-
-    # initialization
-    s_sampled_size = (Nwin, np.shape(s)[0] // (Nwin - Nshift))
-    s_sampled = np.zeros(s_sampled_size)
-    sl_out_sampled = np.zeros(s_sampled_size)
-    sr_out_sampled = np.zeros(s_sampled_size)
-    sl_out = np.zeros(np.shape(s))
-    sr_out = np.zeros(np.shape(s))
-
-    # windowing because some processing will be done in the frequency domain
-    win = np.sqrt(np.hanning(Nwin))
-
-    # processing, mimic real time
-    for n_sample in range(0, s_sampled_size[1] - 1):
-        # sampling and windowing
-        s_sampled[:, n_sample] = win * s[n_sample * Nshift:n_sample * Nshift + Nwin]
-        # convolution
-        sl_out_sampled[:, n_sample], sr_out_sampled[:, n_sample] = np.transpose(
-            scipy.signal.fftconvolve(s_sampled[:, n_sample], sl, mode='same')), np.transpose(
-            scipy.signal.fftconvolve(s_sampled[:, n_sample], sr, mode='same'))
-        # overlap add
-        sl_out[n_sample * Nshift:n_sample * Nshift + Nwin] += win * sl_out_sampled[:, n_sample]  # apply the second
-        # window to have a smooth link between the samples
-        sr_out[n_sample * Nshift:n_sample * Nshift + Nwin] += win * sr_out_sampled[:, n_sample]
-
-    sl_out = sl_out[:-Nshift]  # to match the size of the input signal
-    sr_out = sr_out[:-Nshift]
 
 ''' Scaling / Amplification '''
 'The max value was calculated according to the highest amplitude in the output of the algorithm, for channel 11 of ' \
     'measurements DataEigenmikeDampedRoom10oct.hdf5, ' \
     'it depends on the resampling, usually if we lower the sampling frequency it has to go up'
 
-max = np.maximum(np.max(np.abs(sl_out)), np.max(np.abs(sr_out)))
-print(max)
+# max = np.maximum(np.max(np.abs(sl_out)), np.max(np.abs(sr_out)))
+# print(max)
 # TODO(change this, comment above and uncomment below, this is just a try with other HRTF set+ other values for N)
-# if fs_min == 32000:
-#     max = 0.107 # sampling freq : 32 kHz
-# elif fs_min == 48000:
-#     max = 0.209  # sampling freq : 48 kHz
-# else:
-#     max = 0.209
+if fs_min == 32000:
+    max = 0.107 # sampling freq : 32 kHz
+elif fs_min == 48000:
+    max = 0.209  # sampling freq : 48 kHz
+else:
+    max = 0.209
 # needs to be constant to be able to encode the distance (have different gains in different positions)
 
 sl_out, sr_out = sl_out / max, sr_out / max
 
 ''' Writing file '''
 
-sf.write('./exports/{0} rot={1} pos={8} limiting={2}NFFT={3} realtime={4} HRTFmodif={5} Tapering={6} EQ={7}.wav'.format(
+sf.write('./exports/{0} rotating pos={5} NFFT={1} HRTFmodif={2} Tapering={3} EQ={4}.wav'.format(
     output_file_name,
-    str(rotation_sound_field_deg),
-    str(amp_maxdB), str(NFFT),
-    str(real_time),
+    str(NFFT),
     str(HRTF_refinement),
     str(tapering_win),
     str(eq),
