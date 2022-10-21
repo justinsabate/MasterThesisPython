@@ -10,17 +10,18 @@ from code_SH.SphHarmUtils import *
 import h5py
 import soundfile as sf
 
-from code_moving_Source.MovSrcUtils import moving_convolution
+from code_Utils.MovSrcUtils import moving_convolution
 from code_plots.plots_functions import plot_HRTF_refinement, plot_radial, plot_freq_output
 
-sys.path.insert(0, "/Users/justinsabate/ThesisPython/code_SH")
+sys.path.insert(0, "/code_SH")
 
 # Initializations
 measurementFileName = 'database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
 
-signal_name = 'BluesA_Voc'  # without file extension, in wavfiles folder
+signal_name = 'BluesA_GitL'  # without file extension, in wavfiles folder
 extension = '.wav'
-channel = 7  # channel of the measurement that is being used : position
+channel = 10  # channel of the measurement that is being used : position
+rotation_sound_field_deg = np.arange(0, 360, 10)
 
 start_time = 0
 end_time = 40
@@ -38,12 +39,11 @@ HRTF_refinement_plot = 0
 grid_plot = 0
 DRIR_plot = 0
 
-
-rotation_sound_field_deg = np.arange(0, 360, 10)
 amp_maxdB = 18  # for the radial filter see ref [13] ch 3.6.6 and 3.7.3.3
-Nwin = 512  # for the real time processing, lower : artifacts, higher : possible delay
 
 sampling_frequency = 32000  # below, one can clearly hear the difference
+
+"""This code does not have the real time processing implemented, it was removed for clarity"""
 
 '''Mandatory conditions'''
 if HRTF_refinement == 0:
@@ -76,7 +76,7 @@ if grid_plot:
 
 ### HRTF set extraction
 
-HRIR = io.read_SOFA_file("./database/HRIR TH Koln/HRIR_L2702.sofa")  # changed for MLS"./database/HRIR TH Koln/HRIR_FULL2DEG.sofa"
+HRIR = io.read_SOFA_file("../database/HRIR TH Koln/HRIR_L2702.sofa")  # changed for MLS"./database/HRIR TH Koln/HRIR_FULL2DEG.sofa"
 fs_h = int(HRIR.l.fs)
 HRIR_l_signal = HRIR.l.signal
 HRIR_r_signal = HRIR.r.signal
@@ -351,7 +351,7 @@ sl, sr = np.fft.irfft(Sl, NFFT), np.fft.irfft(Sr, NFFT)
 ''' Convolution '''
 
 speed = len(rotation_sound_field_deg)//2
-sl_out = moving_convolution(sl, s, speed) # sl is of shape [nb of directions x signal size]
+sl_out = moving_convolution(sl, s, speed)  # sl is of shape [nb of directions x signal size]
 sr_out = moving_convolution(sr, s, speed)
 
 

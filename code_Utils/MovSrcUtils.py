@@ -5,7 +5,8 @@ def moving_convolution(BRIR, signal, speed):
     Nwin = length//speed
     Nshift = Nwin//2
     nb_window = length//Nwin  # will crop the end
-    window = np.sqrt(np.bartlett(Nwin)) # the sum of first half and second half is constant, slightly lower than 1 -> no gain fluctuation
+    window = np.hanning(Nwin) # the sum of first half and second half is constant, slightly lower than 1 -> no gain fluctuation
+    # plt.plot(window[:(np.size(window) // 2)] + window[(np.size(window) // 2):])
     i = 0
     j = 0
     convolved = np.zeros(Nwin*nb_window)

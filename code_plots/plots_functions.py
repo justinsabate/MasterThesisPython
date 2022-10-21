@@ -67,3 +67,14 @@ def plot_freq_output(freq, Sl, Sr, freq_output_plot):
         plt.ylabel('Amplitude (dB)')
         plt.title('Frequency domain signal obtained after spherical convolution')
         plt.show()
+
+def plot_grid(grid, grid_plot):
+    if grid_plot:
+        fig = plt.figure(figsize=(10, 7))
+        ax = plt.axes(projection="3d")
+
+        # Creating plot
+        ax.scatter3D(grid[0], grid[1], grid[2], color="green")
+        # ax.set_xlabel('')
+        # norm  = grid[0]**2+(grid[1]+0.9)**2+grid[2]**2
+
