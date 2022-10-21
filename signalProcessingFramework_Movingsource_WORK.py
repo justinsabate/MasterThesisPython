@@ -10,7 +10,8 @@ from code_SH.SphHarmUtils import *
 import h5py
 import soundfile as sf
 
-from moving_Source.MovSrcUtils import moving_convolution
+from code_moving_Source.MovSrcUtils import moving_convolution
+from code_plots.plots_functions import plot_HRTF_refinement, plot_radial, plot_freq_output
 
 sys.path.insert(0, "/Users/justinsabate/ThesisPython/code_SH")
 
@@ -183,49 +184,23 @@ if HRTF_refinement:
     for i, f in enumerate(freq):
         if f > fc:
             allPassFilter_r[:, i] = np.exp(
-                -1j * 2 * np.pi * (f - fc) * tau_r)  # TODO(implement the filter to compensate precisely for the ITD)
+                -1j * 2 * np.pi * (f - fc) * tau_r)  # we could implement the filter to compensate precisely for the ITD, but it is said not to be better in paper [11]
             allPassFilter_l[:, i] = np.exp(-1j * 2 * np.pi * (f - fc) * tau_l)
 
-# Plots of the filter magnitude and phase
-if HRTF_refinement_plot:
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
-    positionIndex = 10000
-    ax1.plot(freq, 10 * np.log10(abs(allPassFilter_l[positionIndex, 0:NFFT // 2 + 1])))
-    ax1.set_xscale('log')
-    ax1.set_xlabel('Frequency (Hz)')
-    ax1.set_ylabel('Magnitude (dB)')
-    ax1.set_ylim(-1, 1)
-    ax1.set_title('Spectrum')
-
-    ax2.plot(freq, np.unwrap(np.angle(allPassFilter_l[positionIndex, 0:NFFT // 2 + 1])), label="l")
-    ax2.plot(freq, np.unwrap(np.angle(allPassFilter_r[positionIndex, 0:NFFT // 2 + 1])), label="r")
-    ax2.set_xscale('log')
-    ax2.set_xlabel('Frequency (Hz)')
-    ax2.set_ylabel('Phase (rad)')
-    ax2.set_title('Phase')
-    plt.legend()
 
 # fft
 HRTF_L = np.fft.rfft(HRIR_l_signal, NFFT)  # taking only the components [:, 0:int(NFFT / 2 + 1)] of the regular np.fft
 HRTF_R = np.fft.rfft(HRIR_r_signal, NFFT)
-if HRTF_refinement_plot:
-    ax3.plot(freq, np.unwrap(np.angle(HRTF_L[positionIndex])) - np.unwrap(np.angle(HRTF_R[positionIndex])),
-             label='Difference LR in phases - non filtered')
-    # ax3.plot(freq, np.unwrap(np.angle(HRTF_R[positionIndex])), label='non filtered R')
+
+
 # applying the filter
 if HRTF_refinement:
     HRTF_L = HRTF_L * allPassFilter_l
     HRTF_R = HRTF_R * allPassFilter_r
-if HRTF_refinement_plot:
-    ax3.plot(freq, np.unwrap(np.angle(HRTF_L[positionIndex])) - np.unwrap(np.angle(HRTF_R[positionIndex])),
-             label='Difference LR in phases - filtered')
-    # ax3.plot(freq, np.unwrap(np.angle(HRTF_R[positionIndex])), label='filtered R')
-    ax3.set_xscale('log')
-    ax3.set_xlabel('Frequency (Hz)')
-    ax3.set_ylabel('Phase (rad)')
-    ax3.set_title('Phase comparison HRTF')
-    plt.legend()
-    plt.show()
+
+# Plots of the filter magnitude and phase
+plot_HRTF_refinement(freq, allPassFilter_l, allPassFilter_r, HRTF_L, HRTF_R, NFFT, HRTF_refinement_plot)
+
 ''' SH expansion '''
 
 # HRTF done just above
@@ -339,23 +314,7 @@ if tapering_win:  # half sided hanning window
     dn = np.transpose(np.transpose(dn) * w_tap)
 
 # plotting the radial filters, the phase has to be linear (causal filter)
-if radial_plot:
-    fig, (ax1, ax2) = plt.subplots(1, 2)  # plots
-    for i in range(0, len(dn)):
-        ax1.plot(freq, 20 * np.log10(abs(dn[i])), label='N = ' + str(i))
-        ax2.plot(freq, np.unwrap(np.angle(dn[i])), label='N = ' + str(i))
-    ax1.set_xscale('log')
-    # ax.set_yscale('log')
-    ax1.set_xlim(np.min(freq) + 1, np.max(freq))
-    # ax.set_ylim(np.min(abs(dn[1])), np.max(abs(dn[1])))
-    plt.legend()
-    ax1.set_xlabel('Frequency (Hz)')
-    ax2.set_xlabel('Frequency (Hz)')
-    ax1.set_ylabel('Amplitude (dB)')
-    ax2.set_ylabel('Phase (rad)')
-    ax1.set_title('Spectrum')
-    ax2.set_title('Phase')
-    plt.show()
+plot_radial(freq, dn, radial_plot)
 
 ''' SH domain convolution'''
 
@@ -382,17 +341,7 @@ for i in range(len(alpha)):
         Sr[i] = np.add(Sr[i], dn_am_Pnm_HnmR_exp)
 
     # plots for debug
-    if freq_output_plot:
-        fig, ax = plt.subplots()
-        ax.plot(freq, 10 * np.log10(abs(Sl[i])), label='Left ear signal')
-        ax.plot(freq, 10 * np.log10(abs(Sr[i])), label='Right ear signal')
-        ax.set_xscale('log')
-        plt.legend()
-        # ax.set_ylim(-100, -50)
-        plt.xlabel('Frequency (Hz)')
-        plt.ylabel('Amplitude (dB)')
-        plt.title('Frequency domain signal obtained after spherical convolution')
-        plt.show()
+    plot_freq_output(freq, Sl, Sr, freq_output_plot)
 
 ''' iFFT '''
 
@@ -413,7 +362,6 @@ sr_out = moving_convolution(sr, s, speed)
 
 # max = np.maximum(np.max(np.abs(sl_out)), np.max(np.abs(sr_out)))
 # print(max)
-# TODO(change this, comment above and uncomment below, this is just a try with other HRTF set+ other values for N)
 if fs_min == 32000:
     max = 0.107 # sampling freq : 32 kHz
 elif fs_min == 48000:
