@@ -18,7 +18,7 @@ from code_plots.plots_functions import plot_HRTF_refinement, plot_radial, plot_f
 sys.path.insert(0, "/Users/justinsabate/ThesisPython/code_SH")
 
 # Initializations
-N = 4  # 1 to input for changed for MLS TODO(change this to 4 when inverse pb working)
+N = 1  # 1 to input for changed for MLS TODO(change this to 4 when inverse pb working)
 
 measurementFileName = 'database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
 
@@ -27,10 +27,10 @@ extension = '.wav'
 start_time = 0
 end_time = 10
 
-channel = 10  # channel of the measurement that is being used
+position = 10  # position of the measurement that is being used
 
-rotation_sound_field_deg = np.arange(0, 360, 10)  # 0
-# rotation_sound_field_deg = [0]
+# rotation_sound_field_deg = np.arange(0, 360, 10)  # 0
+rotation_sound_field_deg = [0]
 
 real_time = 0
 HRTF_refinement = 1  # from [11]
@@ -64,8 +64,8 @@ if np.size(rotation_sound_field_deg) > 1:
 
 with h5py.File(measurementFileName, "r") as f:
     measurementgroupkey = list(f.keys())[0]
-    DRIR = f[measurementgroupkey]['RIRs'][channel, :,
-           :]  # RIR, 106 measurements of the 32 channels eigenmike x number of samples
+    DRIR = f[measurementgroupkey]['RIRs'][position, :,
+           :]  # RIR, 106 measurements of the 32 positions eigenmike x number of samples
     MetaDatagroupkey = list(f.keys())[1]
     fs_r = f[MetaDatagroupkey].attrs['fs']  # Sampling frequency
     # NFFT = np.shape(DRIR)[-1] # too big
@@ -103,7 +103,7 @@ fs_min = min([fs_r, fs_h, fs_s, sampling_frequency])
 #         mini = temp
 #         indice = i
 # print(mini, indice)
-'channel 9 starts the earliest, around index = 6656'
+'position 9 starts the earliest, around index = 6656'
 
 ### same sampling frequency
 DRIR, HRIR_l_signal, HRIR_r_signal, s = resample_if_needed(fs_r, fs_min, fs_h, fs_s, DRIR, HRIR_l_signal, HRIR_r_signal,
@@ -144,7 +144,7 @@ if HRTF_refinement:
     # NFFT = 2048
     # freq = np.arange(0, NFFT // 2 + 1) * (fs_min / NFFT)
 
-    allPassFilter_r = np.ones((len(tau_r), NFFT // 2 + 1), dtype=np.complex128)  # shape : nb positions x frequency bins
+    allPassFilter_r = np.ones((len(tau_r), NFFT // 2 + 1), dtype=np.complex128)  # shape : nb channels x frequency bins
     allPassFilter_l = np.ones((len(tau_l), NFFT // 2 + 1), dtype=np.complex128)
 
     for i, f in enumerate(freq):
@@ -322,7 +322,7 @@ else:  # static source
         sl_out, sr_out = overlap_add(Nwin, s, sl, sr)
 
 ''' Scaling / Amplification '''
-'The max value was calculated according to the highest amplitude in the output of the algorithm, for channel 11 of ' \
+'The max value was calculated according to the highest amplitude in the output of the algorithm, for position 11 of ' \
 'measurements DataEigenmikeDampedRoom10oct.hdf5, ' \
 'it depends on the resampling, usually if we lower the sampling frequency it has to go up'
 
@@ -330,7 +330,7 @@ else:  # static source
 # max = np.maximum(np.max(np.abs(sl_out)), np.max(np.abs(sr_out)))
 # print(max)
 
-# ## Regular use of it, measured on the channel that leads to the biggest output and sets it (it is also
+# ## Regular use of it, measured on the position that leads to the biggest output and sets it (it is also
 # sampling_frequency dependent
 
 if fs_min == 32000:
@@ -352,7 +352,7 @@ sf.write('./exports/{0} pos={7} limiting={1} NFFT={2} realtime={3} HRTFmodif={4}
     str(HRTF_refinement),
     str(tapering_win),
     str(eq),
-    str(channel)),
+    str(position)),
     np.stack((sl_out, sr_out), axis=1), fs_min)
 
 """

@@ -8,6 +8,7 @@ from math import factorial
 from scipy.special import legendre
 import cvxpy as cp
 import time
+import math
 
 
 def get_eigenmike_grid(plot=False):
@@ -305,38 +306,62 @@ def spatialFT(data, position_grid, grid_type='cart', order_max=10, kind="complex
         '''Try 1 : for loop over frequencies -> impossible because way too long, even for one only frequency bin'''
         # Problem data.
         # Y will be the spherical basis
-        Y = spherical_harmonic_bases
-
-        # h will be the hrtf set
-        h = data  # otherwise cannot handle complex values
-        # frequency dependent factor
-        i_fc = 1  # 256  # corresponds to 2kHz with fs = 32kHz and Nfft = 4096
-        Lambda = np.zeros(np.shape(h)[1])
-        Lambda[0:i_fc] = np.ones(i_fc)
-
-        # has to be solved for each frequency bin
-        solution = np.zeros((np.shape(h)[0], np.shape(Y)[1]))
-        for i in range(len(Lambda)):
-            # Define and solve the CVXPY problem.
-            w = cp.Variable(np.shape(Y)[1])  # could create 2 variables and the condition abs(x) == y ?
-            # trying to initialize -> no difference in running time
-            # if i != 0 :
-            #     w.value = solution[i-1]
-
-            cost = Lambda[i] * cp.sum_squares(Y @ w - h[:, i]) + (1 - Lambda[i]) * cp.sum_squares(
-                cp.abs(Y @ w) - cp.abs(h[:, i]))  # not taking the absolute value of x here but should take it
-            # constraints = [0 <= x, x <= 1]
-            prob = cp.Problem(cp.Minimize(cost))
-            print("Solving the inverse problem nb " + str(i))
-
-            # trying to time the operation
-            start = time.time()
-            prob.solve()
-            end = time.time()
-            delta = end - start
-            print("solving took " + str(delta) + " s")
-            solution[i] = w.value
-            # TOO LONG TO RUN + not running if abs value still here
+        # Y = spherical_harmonic_bases
+        #
+        # # h will be the hrtf set
+        # h = data  # otherwise cannot handle complex values
+        # # frequency dependent factor
+        # i_fc = 1  # 256  # corresponds to 2kHz with fs = 32kHz and Nfft = 4096 #TODO(set it to 256 if running with NFFT = 4096)
+        # Lam = np.zeros(np.shape(h)[1])
+        # Lam[0:i_fc] = np.ones(i_fc)
+        #
+        # # has to be solved for each frequency bin
+        # solution = np.zeros((np.shape(h)[0], np.shape(Y)[1]))
+        # for i in range(len(Lam)):
+        #     # Define and solve the CVXPY problem.
+        #     if i >= 1: # could create 2 variables and the condition abs(x) == y ?
+        #         w = cp.Variable(shape=np.shape(Y)[1], value=w.value)
+        #     else:
+        #         w = cp.Variable(shape=np.shape(Y)[1])
+        #
+        #     # trying to initialize -> no difference in running time
+        #     # if i != 0 :
+        #     #     w.value = solution[i-1]
+        #
+        #     '''Try Antonio's idea : split the problem into 2'''
+        #     print('lambda = '+str(Lam[i]))
+        #     # if Lam[i] == 0:
+        #     #     cost = cp.sum_squares((Y @ w) - cp.abs(h[:, i]))
+        #     # else:
+        #     #     cost = cp.sum_squares(Y @ w - h[:, i])
+        #
+        #     # Lambda = i
+        #     # coeff1 = Y @ w
+        #     # coeff2 = h[:, i]
+        #     #
+        #     # coeff1 = cp.sqrt(cp.real(coeff1)**2+cp.imag(coeff1)**2)
+        #     # coeff2 = cp.sqrt(cp.real(coeff2) ** 2 + cp.imag(coeff2) ** 2)
+        #
+        #     # cost = Lam[i] * cp.sum_squares(Y @ w - h[:, i]) + (1 - Lam[i]) * cp.sum_squares(coeff1 - coeff2)
+        #
+        #
+        #     # cost = Lam[i] * cp.sum_squares(Y @ w - h[:, i]) + (1 - Lam[i]) * cp.sum_squares(
+        #     #     cp.norm1(Y @ w) - cp.abs(h[:, i]))  # not taking the absolute value of x here but should take it
+        #
+        #     cost = Lam[i] * cp.sum_squares(Y @ w - h[:, i]) + (1 - Lam[i]) * cp.sum_squares(
+        #         cp.norm(Y @ w) - cp.norm(h[:, i]))  # not taking the absolute value of x here but should take it
+        #
+        #     prob = cp.Problem(cp.Minimize(cost))
+        #     print("Solving the inverse problem nb " + str(i))
+        #
+        #     # trying to time the operation
+        #     start = time.time()
+        #     prob.solve()
+        #     end = time.time()
+        #     delta = end - start
+        #     print("solving took " + str(delta) + " s")
+        #     solution[i] = w.value
+        #     # TOO LONG TO RUN + not running if abs value still here
 
         '''Try 2 : 3D matrices -> impossible because cost function cannot be a matrix'''
         # # Problem data.
@@ -380,6 +405,51 @@ def spatialFT(data, position_grid, grid_type='cart', order_max=10, kind="complex
         #     print("Solving the inverse problem nb " + str(i))
         #     prob.solve()
         #     solution[i] = w.value[:n_harm]+1j*w.value[n_harm:]
+
+        'Try 4 : solving the problem before optimization in the paper with 2 variables'
+        print('Using Magnitude least squares')
+        # Problem data.
+        # Y will be the spherical basis
+        Y = spherical_harmonic_bases
+
+        # h will be the hrtf set
+        h = data  # otherwise cannot handle complex values
+        # frequency dependent factor
+        i_fc = 1  # 256  # corresponds to 2kHz with fs = 32kHz and Nfft = 4096 #TODO(set it to 256 if running with NFFT = 4096)
+        Lam = np.zeros(np.shape(h)[1])
+        Lam[0:i_fc] = np.ones(i_fc)
+
+        # has to be solved for each frequency bin
+        solution = np.zeros((np.shape(h)[0], np.shape(Y)[1]))
+
+
+        # has to make it i dependent with the lambda
+        for i in range(len(Lam)):
+            # Define and solve the CVXPY problem.
+            w = cp.Variable(shape=np.shape(Y)[1])
+            p = cp.Variable(shape=np.shape(h)[0])
+
+            print('lambda = '+str(Lam[i]))
+
+            M = cp.diag(np.abs(h[:, i]))
+
+            cost = cp.sum_squares(Y@w-M@p)
+            constraint = []
+            for j in range(np.size(p)):
+                constraint.append(cp.norm2(p[j]-1) == 0)
+            objective = cp.Minimize(cost)
+            prob = cp.Problem(objective, constraint)
+            print("Solving the inverse problem nb " + str(i))
+
+            # trying to time the operation
+            start = time.time()
+            prob.solve()
+            end = time.time()
+            delta = end - start
+            print("solving took " + str(delta) + " s")
+            solution[i] = w.value
+            # TOO LONG TO RUN + not running if abs value still here
+
 
         return np.dot(np.transpose(solution), data)
 
