@@ -17,7 +17,7 @@ import sys
 
 from code_SH.SphHarmUtils import spatialFT, get_eigenmike_grid, weights
 
-sys.path.insert(0, "database/")
+sys.path.insert(0, "../database/")
 from sound_field_analysis import io, gen, process, plot, sph, utils
 
 
@@ -35,15 +35,15 @@ azim_offset_deg = -140    # azimuth head rotation offset in degrees (to make the
 pre_SSR_file    = "SSR_IRs.wav"  # target file for rendered preview SSR BRIRs
 pre_azims_deg   = [-30]    # azimuth head orientations in degrees for rendered preview BRIR plots and auralizations
 pre_len_s       = 20            # length of rendered preview BRIR auralizations in seconds
-pre_src_file = "./wavfiles/BluesA_GitL.wav"  # audio source file for rendered preview BRIR auralizations
+pre_src_file = "../wavfiles/BluesA_GitL.wav"  # audio source file for rendered preview BRIR auralizations
 
 #################
 ### Load Data ###
 #################
 if is_load_sofa:
     # load impulse responses from SOFA file
-    DRIR = io.read_SOFA_file("./database/RIR TH Koln/DRIR_CR1_VSA_110RS_R.sofa")
-    HRIR = io.read_SOFA_file("./database/HRIR TH Koln/HRIR_L2702.sofa")
+    DRIR = io.read_SOFA_file("../database/RIR TH Koln/DRIR_CR1_VSA_110RS_R.sofa")
+    HRIR = io.read_SOFA_file("../database/HRIR TH Koln/HRIR_L2702.sofa")
     FS = int(HRIR.l.fs)
     NFFT = HRIR.l.signal.shape[-1]
 else:
@@ -329,7 +329,7 @@ BRIR *= 0.9 / np.max(np.abs(BRIR))
 # source, source_fs = io.read_wavefile(pre_src_file)
 
 # Needed to import it in float32, changed by justin
-source, source_fs = librosa.load('./wavfiles/BluesA_GitL.wav', sr=None, mono=True,duration=20, dtype=np.float32)
+source, source_fs = librosa.load('../wavfiles/BluesA_GitL.wav', sr=None, mono=True, duration=20, dtype=np.float32)
 if len(source.shape) > 1:
     source = source[0]  # consider only first channel
 

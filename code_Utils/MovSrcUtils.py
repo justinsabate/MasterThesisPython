@@ -1,6 +1,8 @@
 import numpy as np
 import scipy
 def moving_convolution(BRIR, signal, speed):
+    """Function used to do a convolution between signal and BRIR channels with switching the channels of BRIR in a
+    regular manner defined by speed """
     length = len(signal)
     Nwin = length//speed
     Nshift = Nwin//2

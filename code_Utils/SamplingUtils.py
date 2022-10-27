@@ -1,6 +1,11 @@
 from librosa import resample
 
 def resample_if_needed(fs_r, fs_min, fs_h, fs_s, DRIR, HRIR_l_signal, HRIR_r_signal, s):
+    """Function that downsamples all the signals to the lowest sampling frequency fs_min
+    fs_r corresponds to DRIR,
+    fs_h corresponds to HRIR signals,
+    fs_s corresponds to s"""
+    
     if fs_r > fs_min:
         DRIR = resample(DRIR, orig_sr=fs_r, target_sr=fs_min)
         print('RIR resampled')

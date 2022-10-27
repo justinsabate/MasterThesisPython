@@ -3,6 +3,7 @@ import scipy
 
 
 def overlap_add(Nwin, s, sl, sr):
+    """Overlap add method for convolution of sl and sr with s mimicking real time processing"""
     Nshift = Nwin // 2  # for overlap
 
     # zeropadd signal to match nb of windows
