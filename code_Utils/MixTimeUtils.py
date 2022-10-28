@@ -22,15 +22,13 @@ def data_based(IR, fs):
     peak_secure_margin = 100  # used to protect peak from being affected when eliminating time of flight
 
     # cut IR (from onset position to stop_time)
-    IR, nb_channel = cut(IR, fs, onset_threshold_dB, peak_secure_margin)
-
-
+    IR, index_direct, nb_channel = cut(IR, fs, onset_threshold_dB, peak_secure_margin)
 
     t_abel = np.zeros(nb_channel)
     echo_dens = np.zeros((np.shape(IR)[0], nb_channel))
 
     for n in range(0, nb_channel):
-        t_abel[n], echo_dens[:, n] = np.array(abel(IR[:, n], N, fs, peak_secure_margin))
+        t_abel[n], echo_dens[:, n] = np.array(abel(IR[:, n], N, fs, peak_secure_margin),dtype=object)
 
     # tmp from regression equations
     tmp50 = 0.8 * t_abel - 8
@@ -56,7 +54,7 @@ def data_based(IR, fs):
         tmp50_interchannel_mean = []
         tmp95_interchannel_mean = []
 
-    return tmp50, tmp95, tmp50_interchannel_mean, tmp95_interchannel_mean, echo_dens
+    return tmp50, tmp95, tmp50_interchannel_mean, tmp95_interchannel_mean, echo_dens, index_direct
 
 
 def abel(IR, N, fs, peak_secure_margin):
@@ -109,57 +107,52 @@ def abel(IR, N, fs, peak_secure_margin):
 
 
 def cut(IR, fs, onset_threshold_dB, peak_secure_margin):
-    mini, nb_channel = get_direct_index(IR, onset_threshold_dB)
-    if mini <= peak_secure_margin:
+
+    IR, index_direct, nb_channel = get_direct_index(IR, onset_threshold_dB)
+    if index_direct <= peak_secure_margin:
         peak_secure_margin = 0  # ignore peak_secure_margin
 
     '''Can implement easily a way to remove the end of the response'''
-    stop_time = int(len(IR) - (mini - peak_secure_margin))  # IR length from peak to end in samples
+    stop_time = int(len(IR) - (index_direct - peak_secure_margin))  # IR length from peak to end in samples
 
     IR_cut = np.zeros((stop_time, nb_channel))
 
     for j in range(nb_channel):
-        if nb_channel == 1:
-            IR_cut[:,j] = IR[mini - peak_secure_margin: mini - peak_secure_margin + stop_time]
-        else:
-            IR_cut[:, j] = IR[
-                           mini - peak_secure_margin: mini - peak_secure_margin + stop_time,
-                           j]
+        IR_cut[:, j] = IR[
+                       index_direct - peak_secure_margin: index_direct - peak_secure_margin + stop_time,
+                       j]
 
-    return IR_cut, nb_channel
+    return IR_cut, index_direct, nb_channel
 
 def get_direct_index(IR, onset_threshold_dB= -30):
+    '''IR is returned because it was reshaped to be easier to process'''
+
     if len(np.shape(IR)) == 1:
         nb_channel = 1
     else:
         nb_channel = np.shape(IR)[1]
+
+    # set IR to the right size to be able to process multi-channels IR
+    IR = np.reshape(IR, (np.shape(IR)[0], nb_channel))
+
     # calculate linear value of onset threshold from dB value
     onset_threshold = 10 ** (onset_threshold_dB / 20)
 
     go_on = 1
     k = -1
 
-    deli = np.zeros(nb_channel)
+    index_direct = np.zeros(nb_channel)
     # for all IR - channels, find position where onset threshold value is reached
     for i in range(0, nb_channel):
-        if nb_channel !=1:
-            MAX = np.max(abs(IR[:, i]))
-        else:
-            MAX = np.max(abs(IR[:]))
+        MAX = np.max(abs(IR[:]))
         # for full length of channel, find peak position
         while go_on:
             k = k + 1
-
-            if nb_channel==1:
-                if abs(IR[k]) > MAX * onset_threshold:
-                    deli[i] = k
-                    go_on = 0
-            else:
-                if abs(IR[k, i]) > MAX * onset_threshold:
-                    deli[i] = k
-                    go_on = 0
+            if abs(IR[k, i]) > MAX * onset_threshold:
+                index_direct[i] = k
+                go_on = 0
         go_on = 1
         k = 0
 
-    return int(np.min(deli)), nb_channel
+    return IR, int(np.min(index_direct)), nb_channel
 

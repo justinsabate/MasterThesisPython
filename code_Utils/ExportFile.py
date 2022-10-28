@@ -10,7 +10,7 @@ from code_Utils.MixTimeUtils import data_based
 '''Exporting one RIR from the spherical array measurement'''
 measurementFileName = '../database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
 position = 4
-channel = 9
+channel = [9, 10, 11]
 outputFileName = 'IR_normalized'
 
 with h5py.File(measurementFileName, "r") as f:
