@@ -18,24 +18,26 @@ from code_plots.plots_functions import plot_HRTF_refinement, plot_radial, plot_f
 sys.path.insert(0, "/Users/justinsabate/ThesisPython/code_SH")
 
 # Initializations
-N = 1  # 1 to input for changed for MLS TODO(change this to 4 when inverse pb working)
+N = 4  # 1 to input for changed for MLS
 
 measurementFileName = 'database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
 
 signal_name = 'BluesA_GitL'  # without file extension, in wavfiles folder
 extension = '.wav'
 start_time = 0
-end_time = 10
+end_time = 20
 
-position = 10  # position of the measurement that is being used
+position = 3  # position of the measurement that is being used
 
-# rotation_sound_field_deg = np.arange(0, 360, 10)  # 0
-rotation_sound_field_deg = [0]
+rotation_sound_field_deg = np.arange(0, 360, 10)  # 0
+# rotation_sound_field_deg = [0]
 
 real_time = 0
-HRTF_refinement = 1  # from [11]
+HRTF_refinement = 0  # from [11]
 tapering_win = 1  # from soud field analysis toolbox + cf [36]
 eq = 1  # from sound field analysis toolbox + cf [23], could probably be calculated from HRTF but calculated from a sphere (scattering calculations)
+MLS = 1
+is_apply_rfi = 1  # TODO(see the effect, doing this because weird stuff happening in the low frequencies)
 
 output_file_name = signal_name
 
@@ -50,12 +52,17 @@ Nwin = 512  # for the real time processing, but no time difference, might use it
 sampling_frequency = 32000  # below, one can clearly hear the difference
 
 '''Mandatory conditions'''
+if MLS:
+    HRTF_refinement = 0
+
 if HRTF_refinement == 0:
     HRTF_refinement_plot = 0
 
 if np.size(rotation_sound_field_deg) > 1:
     real_time = 0
     print('Real time set to 0, case with real time and many directions not implemented')
+
+
 
 '''Get the data'''
 # Be sure they are the same type (float32 for ex)
@@ -144,13 +151,14 @@ if HRTF_refinement:
     # NFFT = 2048
     # freq = np.arange(0, NFFT // 2 + 1) * (fs_min / NFFT)
 
+    # Not actual compensation by the filter but indeed a calculated one according to paper [11], it is said to have no difference perceptually and it is more simple
     allPassFilter_r = np.ones((len(tau_r), NFFT // 2 + 1), dtype=np.complex128)  # shape : nb channels x frequency bins
     allPassFilter_l = np.ones((len(tau_l), NFFT // 2 + 1), dtype=np.complex128)
 
     for i, f in enumerate(freq):
         if f > fc:
             allPassFilter_r[:, i] = np.exp(
-                -1j * 2 * np.pi * (f - fc) * tau_r)  # TODO(implement the filter to compensate precisely for the ITD)
+                -1j * 2 * np.pi * (f - fc) * tau_r)
             allPassFilter_l[:, i] = np.exp(-1j * 2 * np.pi * (f - fc) * tau_l)
 
 ### fft
@@ -166,35 +174,50 @@ if HRTF_refinement:
     plot_HRTF_refinement(freq, allPassFilter_l, allPassFilter_r, HRTF_L, HRTF_R, NFFT, HRTF_refinement_plot)
 
 ''' SH expansion '''
-
-Hnm = np.stack(  # 2 sides, L and R
-    [
-        spatialFT(
-            HRTF_L,
-            HRIR.grid,
-            grid_type='sphe',
-            order_max=N,
-            kind="complex",
-            spherical_harmonic_bases=None,
-            weight=None,
-            leastsq_fit=True,
-            regularised_lstsq_fit=False,
-            MLS=False
-        ),
-        spatialFT(
-            HRTF_R,
-            HRIR.grid,
-            grid_type='sphe',
-            order_max=N,
-            kind="complex",
-            spherical_harmonic_bases=None,
-            weight=None,
-            leastsq_fit=True,
-            regularised_lstsq_fit=False,
-            MLS=False
-        ),
-    ]
-)
+if not MLS:
+    Hnm = np.stack(  # 2 sides, L and R
+        [
+            spatialFT(
+                HRTF_L,
+                HRIR.grid,
+                grid_type='sphe',
+                order_max=N,
+                kind="complex",
+                spherical_harmonic_bases=None,
+                weight=None,
+                leastsq_fit=True,
+                regularised_lstsq_fit=False,
+                MLS=False
+            ),
+            spatialFT(
+                HRTF_R,
+                HRIR.grid,
+                grid_type='sphe',
+                order_max=N,
+                kind="complex",
+                spherical_harmonic_bases=None,
+                weight=None,
+                leastsq_fit=True,
+                regularised_lstsq_fit=False,
+                MLS=False
+            ),
+        ]
+    )
+else:
+    Hnm = spatialFT(
+                np.stack((HRIR_l_signal, HRIR_r_signal), 0),
+                HRIR.grid,
+                grid_type='sphe',
+                order_max=N,
+                kind="complex",
+                spherical_harmonic_bases=None,
+                weight=None,
+                leastsq_fit=False,
+                regularised_lstsq_fit=False,
+                MLS=True,
+                fs=fs_min,
+                NFFT=NFFT
+    )
 
 DRFR = np.fft.rfft(DRIR, NFFT)  # rfft takes only the first part of the fft
 
@@ -207,7 +230,7 @@ Pnm = spatialFT(  # Pnm : Spatial Fourier Coefficients with nm coeffs in rows an
     spherical_harmonic_bases=None,
     weight=None,
     leastsq_fit=True,
-    regularised_lstsq_fit=False,  # not nice result, don't know why
+    regularised_lstsq_fit=False,
     MLS=False
 )
 
@@ -238,11 +261,21 @@ dn = gen.radial_filter_fullspec(
     array_configuration=config,
     amp_maxdB=amp_maxdB,
 )
+'''Taken from sound field analysis (sofia) toolbox, could not find the papers'''
+if is_apply_rfi:
+    # improve radial filters (remove DC offset and make casual) [1]
+    dn, _, dn_delay_samples = process.rfi(dn, kernelSize=NFFT, highPass=0.0065)  # zero phase high pass
+else:
+    # make radial filters causal
+    dn_delay_samples = NFFT / 2
+    dn *= gen.delay_fd(target_length_fd=dn.shape[-1], delay_samples=dn_delay_samples)
 
-### make radial filters causal
-dn_delay_samples = NFFT / 2
-dn *= gen.delay_fd(target_length_fd=dn.shape[-1], delay_samples=dn_delay_samples)
-### additional treatment possible in the toolbox to remove the dc component with high passing, not made here
+
+# ### make radial filters causal
+# dn_delay_samples = NFFT / 2
+# dn *= gen.delay_fd(target_length_fd=dn.shape[-1], delay_samples=dn_delay_samples)
+# ### additional treatment possible cf is_apply_rfi in the toolbox to remove the dc component with high passing, not made here
+
 
 ''' Implementing the different improvements of the auralized signal '''
 ### improvement EQing the orders that are truncated cf paper [23]
@@ -256,7 +289,6 @@ if eq:
         is_tapering=tapering_win,
     )
 
-    # make Spherical Head Filter causal -> apparently no need because already causal
 
     dn_shf_delay_samples = NFFT / 2
     dn_shf *= gen.delay_fd(
@@ -265,6 +297,12 @@ if eq:
 
     dn[:] *= dn_shf  # effect : reversing the phase, and we can indeed hear a big difference, the phase is linear but
     # creates the delay necessary not to have weird "reflections" (with a hearable delay)
+else:
+    dn_shf_delay_samples = NFFT / 2
+    dn *= gen.delay_fd(
+        target_length_fd=dn.shape[-1], delay_samples=dn_shf_delay_samples
+    )
+
 
 ### improvement : tapering cf paper [23]
 if tapering_win:  # half sided hanning window
@@ -308,6 +346,7 @@ sl, sr = np.fft.irfft(Sl, NFFT), np.fft.irfft(Sr, NFFT)
 
 ''' Convolution with dry signal '''
 speed = len(rotation_sound_field_deg) // 2  # this parameter encodes the speed of the change form one direction to
+speed *=2
 # another when the source is moving, if it is 0, then the source is not moving
 if speed:  # moving source
     sl_out = moving_convolution(sl, s, speed)  # sl is of shape [nb of directions x signal size]
@@ -345,14 +384,15 @@ sl_out, sr_out = sl_out / max, sr_out / max
 
 ''' Writing file '''
 
-sf.write('./exports/{0} pos={7} limiting={1} NFFT={2} realtime={3} HRTFmodif={4} Tapering={5} EQ={6}.wav'.format(
+sf.write('./exports/{0} pos={7} limiting={1} NFFT={2} realtime={3} HRTFmodif={4} Tapering={5} EQ={6} MLS={7}.wav'.format(
     output_file_name,
     str(amp_maxdB), str(NFFT),
     str(real_time),
     str(HRTF_refinement),
     str(tapering_win),
     str(eq),
-    str(position)),
+    str(position),
+    str(MLS)),
     np.stack((sl_out, sr_out), axis=1), fs_min)
 
 

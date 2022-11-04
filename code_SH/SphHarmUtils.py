@@ -9,6 +9,7 @@ from scipy.special import legendre
 import cvxpy as cp
 import time
 import math
+from code_SH.spaudio_Utils import magls_bin
 
 
 def get_eigenmike_grid(plot=False):
@@ -248,7 +249,7 @@ def sph_harmonics(m, n, az, co, kind="complex"):
 
 def spatialFT(data, position_grid, grid_type='cart', order_max=10, kind="complex",
               spherical_harmonic_bases=None, weight=None,
-              leastsq_fit=False, regularised_lstsq_fit=False, MLS=False):
+              leastsq_fit=False, regularised_lstsq_fit=False, MLS=False, fs=None, NFFT = 4096):
     """Perform spatial Fourier transform.
     Parameters
     ----------
@@ -278,6 +279,7 @@ def spatialFT(data, position_grid, grid_type='cart', order_max=10, kind="complex
     .. [5] Rafaely, B. (2015). Fundamentals of Spherical Array Processing,
         (J. Benesty and W. Kellermann, Eds.) Springer Berlin Heidelberg,
         2nd ed., 196 pages. doi:10.1007/978-3-319-99561-8
+        :param kind:
         :param grid_type:
     """
     # Justin adding
@@ -406,52 +408,64 @@ def spatialFT(data, position_grid, grid_type='cart', order_max=10, kind="complex
         #     prob.solve()
         #     solution[i] = w.value[:n_harm]+1j*w.value[n_harm:]
 
-        'Try 4 : solving the problem before optimization in the paper with 2 variables'
-        print('Using Magnitude least squares')
-        # Problem data.
-        # Y will be the spherical basis
-        Y = spherical_harmonic_bases
+        # 'Try 4 : solving the problem before optimization in the paper with 2 variables'
+        # print('Using Magnitude least squares')
+        # # Problem data.
+        # # Y will be the spherical basis
+        # Y = spherical_harmonic_bases
+        #
+        # # h will be the hrtf set
+        # h = data  # otherwise cannot handle complex values
+        # # frequency dependent factor
+        # i_fc = 1  # 256  # corresponds to 2kHz with fs = 32kHz and Nfft = 4096 #TODO(set it to 256 if running with NFFT = 4096)
+        # Lam = np.zeros(np.shape(h)[1])
+        # Lam[0:i_fc] = np.ones(i_fc)
+        #
+        # # has to be solved for each frequency bin
+        # solution = np.zeros((np.shape(h)[0], np.shape(Y)[1]))
+        #
+        #
+        # # has to make it i dependent with the lambda
+        # for i in range(len(Lam)):
+        #     # Define and solve the CVXPY problem.
+        #     w = cp.Variable(shape=np.shape(Y)[1])
+        #     p = cp.Variable(shape=np.shape(h)[0])
+        #
+        #     print('lambda = '+str(Lam[i]))
+        #
+        #     M = cp.diag(np.abs(h[:, i]))
+        #
+        #     cost = cp.sum_squares(Y@w-M@p)
+        #     constraint = []
+        #     for j in range(np.size(p)):
+        #         constraint.append(cp.norm2(p[j]-1) == 0)
+        #     objective = cp.Minimize(cost)
+        #     prob = cp.Problem(objective, constraint)
+        #     print("Solving the inverse problem nb " + str(i))
+        #
+        #     # trying to time the operation
+        #     start = time.time()
+        #     prob.solve()
+        #     end = time.time()
+        #     delta = end - start
+        #     print("solving took " + str(delta) + " s")
+        #     solution[i] = w.value
+        #     # TOO LONG TO RUN + not running if abs value still here
+        #
+        ''' Try 5 new library'''
 
-        # h will be the hrtf set
-        h = data  # otherwise cannot handle complex values
-        # frequency dependent factor
-        i_fc = 1  # 256  # corresponds to 2kHz with fs = 32kHz and Nfft = 4096 #TODO(set it to 256 if running with NFFT = 4096)
-        Lam = np.zeros(np.shape(h)[1])
-        Lam[0:i_fc] = np.ones(i_fc)
+        # spherical_harmonic_bases
+        # data
 
-        # has to be solved for each frequency bin
-        solution = np.zeros((np.shape(h)[0], np.shape(Y)[1]))
+        grid = position_grid # TODO check if cart or sph needed
+        fs = fs
+        HRIR_L = data[0,:,:]
+        HRIR_R = data[1,:,:]
+        azi = azi
+        zen = elev
+        solution = magls_bin(hrirs=data, N_sph=order_max, f_trans=2000,fs = fs, azi = azi,elev = elev,gridpoints = position_grid, Nfft=NFFT, basis=spherical_harmonic_bases)
 
-
-        # has to make it i dependent with the lambda
-        for i in range(len(Lam)):
-            # Define and solve the CVXPY problem.
-            w = cp.Variable(shape=np.shape(Y)[1])
-            p = cp.Variable(shape=np.shape(h)[0])
-
-            print('lambda = '+str(Lam[i]))
-
-            M = cp.diag(np.abs(h[:, i]))
-
-            cost = cp.sum_squares(Y@w-M@p)
-            constraint = []
-            for j in range(np.size(p)):
-                constraint.append(cp.norm2(p[j]-1) == 0)
-            objective = cp.Minimize(cost)
-            prob = cp.Problem(objective, constraint)
-            print("Solving the inverse problem nb " + str(i))
-
-            # trying to time the operation
-            start = time.time()
-            prob.solve()
-            end = time.time()
-            delta = end - start
-            print("solving took " + str(delta) + " s")
-            solution[i] = w.value
-            # TOO LONG TO RUN + not running if abs value still here
-
-
-        return np.dot(np.transpose(solution), data)
+        return solution  # matrix multiplication with the HRTF (data in the frequency domain) already done in magls_bin
 
     if regularised_lstsq_fit:
         # i assume this creates the condition/regularization
@@ -1345,7 +1359,3 @@ def get_n_m(nm, Nmax):
             return n, m - n
     return None
 
-
-"""
-Trying to calculate the spherical harmonics basis coefficients to know what code is right of wrong (sofia or not)
-"""
