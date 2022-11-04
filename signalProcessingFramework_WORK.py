@@ -165,7 +165,7 @@ if HRTF_refinement:
 HRTF_L = np.fft.rfft(HRIR_l_signal, NFFT)  # taking only the components [:, 0:int(NFFT / 2 + 1)] of the regular np.fft
 HRTF_R = np.fft.rfft(HRIR_r_signal, NFFT)
 
-### applying the filter test commit
+### applying the filter
 if HRTF_refinement:
     HRTF_L = HRTF_L * allPassFilter_l
     HRTF_R = HRTF_R * allPassFilter_r
