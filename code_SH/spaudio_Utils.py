@@ -74,15 +74,19 @@ def magls_bin(hrirs, N_sph, f_trans=None, hf_cont='angle', hf_delay=(0, 0), fs=N
     # azi = hrirs.grid['azi']
     # zen = hrirs.grid['colat']
 
-    fs = fs  # useless
-    hrirs_l = hrirs[0, :, :]
-    hrirs_r = hrirs[1, :, :]
+    if len(np.shape(hrirs))==2: #TODO poor solution because going to do it twice for nothing
+        hrirs_l = hrirs
+        hrirs_r = hrirs
+        print('Warning, mono signal, magls should use 2 channels to return Hnm coefficients')
+    elif len(np.shape(hrirs))==3:
+        hrirs_l = hrirs[0, :, :]
+        hrirs_r = hrirs[1, :, :]
     azi = azi  # useless
     zen = elev
     gridpoints = gridpoints
 
     # numSmpls = hrirs.left.shape[1]
-    numSmpls = hrirs_l.shape[1]  # TODO check dimension
+    numSmpls = hrirs_l.shape[1]
 
     nfftmin = Nfft
     # nfftmin = 1024
@@ -168,7 +172,9 @@ def magls_bin(hrirs, N_sph, f_trans=None, hf_cont='angle', hf_delay=(0, 0), fs=N
     # # taper first ?
     # hrirs_mls_nm[:, :, :4] *= np.hanning(8)[:4]
 
-
-    return hrtfs_mls_nm
+    if len(np.shape(hrirs)) == 2:
+        return hrtfs_mls_nm[0, :, :]
+    else:
+        return hrtfs_mls_nm
 
 

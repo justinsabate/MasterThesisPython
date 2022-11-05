@@ -457,12 +457,12 @@ def spatialFT(data, position_grid, grid_type='cart', order_max=10, kind="complex
         # spherical_harmonic_bases
         # data
 
-        grid = position_grid # TODO check if cart or sph needed
+        # grid = position_grid
         fs = fs
-        HRIR_L = data[0,:,:]
-        HRIR_R = data[1,:,:]
+        # HRIR_L = data[0,:,:]
+        # HRIR_R = data[1,:,:]
         azi = azi
-        zen = elev
+        # zen = elev
         solution = magls_bin(hrirs=data, N_sph=order_max, f_trans=2000,fs = fs, azi = azi,elev = elev,gridpoints = position_grid, Nfft=NFFT, basis=spherical_harmonic_bases)
 
         return solution  # matrix multiplication with the HRTF (data in the frequency domain) already done in magls_bin

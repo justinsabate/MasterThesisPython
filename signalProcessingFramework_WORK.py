@@ -1,21 +1,22 @@
-import sys
+# import sys
 
-import numpy as np
-import scipy
+from scipy.signal import fftconvolve
 from librosa import load, resample
 from sound_field_analysis import io, process, gen, utils  # to read HRTF set : sofa file
 from sound_field_analysis.io import ArrayConfiguration
 
 from code_SH.SphHarmUtils import *
-import h5py
-import soundfile as sf
+from h5py import File
+from soundfile import write
 
 from code_Utils.MovSrcUtils import moving_convolution
 from code_Utils.RealTimeUtils import overlap_add
 from code_Utils.SamplingUtils import resample_if_needed
 from code_plots.plots_functions import plot_HRTF_refinement, plot_radial, plot_freq_output, plot_grid
+# import time
+# tic = time.perf_counter()
 
-sys.path.insert(0, "/Users/justinsabate/ThesisPython/code_SH")
+# sys.path.insert(0, "/Users/justinsabate/ThesisPython/code_SH")
 
 # Initializations
 N = 4  # 1 to input for changed for MLS
@@ -25,19 +26,24 @@ measurementFileName = 'database/Measurements-10-oct/DataEigenmikeDampedRoom10oct
 signal_name = 'BluesA_GitL'  # without file extension, in wavfiles folder
 extension = '.wav'
 start_time = 0
-end_time = 20
+end_time = 60
 
-position = 3  # position of the measurement that is being used
+position = 7  # position of the measurement that is being used, position 7 => -23° azimuth
 
-rotation_sound_field_deg = np.arange(0, 360, 10)  # 0
-# rotation_sound_field_deg = [0]
+offset = -23
+rotation_sound_field_deg = np.arange(-90, 91, 5)  # 0
+# rotation_sound_field_deg = [0] # to get it in front for position 7
+rotation_sound_field_deg += offset
+
+'''Careful, loadHnm has to be set to 0 in case of changing the methods to obtain the Hnm coefficients'''
+loadHnm = 1  # to load or calculate the Hnm coefficients, getting faster results
 
 real_time = 0
 HRTF_refinement = 0  # from [11]
 tapering_win = 1  # from soud field analysis toolbox + cf [36]
 eq = 1  # from sound field analysis toolbox + cf [23], could probably be calculated from HRTF but calculated from a sphere (scattering calculations)
 MLS = 1
-is_apply_rfi = 1  # TODO(see the effect, doing this because weird stuff happening in the low frequencies)
+is_apply_rfi = 1   # TODO(see the effect, doing this because weird stuff happening in the low frequencies)
 
 output_file_name = signal_name
 
@@ -69,7 +75,7 @@ if np.size(rotation_sound_field_deg) > 1:
 
 ### Measurement data
 
-with h5py.File(measurementFileName, "r") as f:
+with File(measurementFileName, "r") as f:
     measurementgroupkey = list(f.keys())[0]
     DRIR = f[measurementgroupkey]['RIRs'][position, :,
            :]  # RIR, 106 measurements of the 32 positions eigenmike x number of samples
@@ -82,12 +88,18 @@ grid = get_eigenmike_grid(plot=False)
 plot_grid(grid, grid_plot)
 
 ### HRTF set extraction
-
-HRIR = io.read_SOFA_file(
-    "./database/HRIR TH Koln/HRIR_L2702.sofa")  # changed for MLS"./database/HRIR TH Koln/HRIR_FULL2DEG.sofa"
-fs_h = int(HRIR.l.fs)
-HRIR_l_signal = HRIR.l.signal
-HRIR_r_signal = HRIR.r.signal
+if not loadHnm:
+    HRIR = io.read_SOFA_file(
+        "./database/HRIR TH Koln/HRIR_L2702.sofa")  # changed for MLS"./database/HRIR TH Koln/HRIR_FULL2DEG.sofa"
+    fs_h = int(HRIR.l.fs)
+    HRIR_l_signal = HRIR.l.signal
+    HRIR_r_signal = HRIR.r.signal
+else:
+    print('loading saved Hnm coefficients')
+    loaded = np.load('database/Hnm.npz')
+    fs_h = loaded['fs_h']
+    HRIR_l_signal = None
+    HRIR_r_signal = None
 
 ### Loading the anechoic signal to be convolved
 s, fs_s = load('./wavfiles/' + signal_name + extension, sr=None, mono=True, offset=start_time,
@@ -113,8 +125,8 @@ fs_min = min([fs_r, fs_h, fs_s, sampling_frequency])
 'position 9 starts the earliest, around index = 6656'
 
 ### same sampling frequency
-DRIR, HRIR_l_signal, HRIR_r_signal, s = resample_if_needed(fs_r, fs_min, fs_h, fs_s, DRIR, HRIR_l_signal, HRIR_r_signal,
-                                                           s)
+# HRIR_l_signal can be None
+DRIR, s, HRIR_l_signal, HRIR_r_signal = resample_if_needed(fs_r, fs_min, fs_h, fs_s, DRIR, s, HRIR_l_signal, HRIR_r_signal)
 
 ### Taking 50ms/100ms of the RIR signal
 # tries : 6000 vs 6600 for the first index of the RIR (before resampling)
@@ -141,83 +153,96 @@ order even with a lower order '''
 ### creating the filter
 fc = 1500  # empirically chosen in [11], consistent with duplex theory
 c = 343
-if HRTF_refinement:
-    rh = 8.5e-2  # HRIR.grid.radius
-    azi = HRIR.grid.azimuth  # already spherical
-    elev = HRIR.grid.colatitude
-    tau_r = -np.cos(azi) * np.sin(elev) * rh / c
-    tau_l = -tau_r
+if not loadHnm:
+    if HRTF_refinement:
+        rh = 8.5e-2  # HRIR.grid.radius
+        azi = HRIR.grid.azimuth  # already spherical
+        elev = HRIR.grid.colatitude
+        tau_r = -np.cos(azi) * np.sin(elev) * rh / c
+        tau_l = -tau_r
 
-    # NFFT = 2048
-    # freq = np.arange(0, NFFT // 2 + 1) * (fs_min / NFFT)
+        # NFFT = 2048
+        # freq = np.arange(0, NFFT // 2 + 1) * (fs_min / NFFT)
 
-    # Not actual compensation by the filter but indeed a calculated one according to paper [11], it is said to have no difference perceptually and it is more simple
-    allPassFilter_r = np.ones((len(tau_r), NFFT // 2 + 1), dtype=np.complex128)  # shape : nb channels x frequency bins
-    allPassFilter_l = np.ones((len(tau_l), NFFT // 2 + 1), dtype=np.complex128)
+        # Not actual compensation by the filter but indeed a calculated one according to paper [11], it is said to have no difference perceptually and it is more simple
+        allPassFilter_r = np.ones((len(tau_r), NFFT // 2 + 1), dtype=np.complex128)  # shape : nb channels x frequency bins
+        allPassFilter_l = np.ones((len(tau_l), NFFT // 2 + 1), dtype=np.complex128)
 
-    for i, f in enumerate(freq):
-        if f > fc:
-            allPassFilter_r[:, i] = np.exp(
-                -1j * 2 * np.pi * (f - fc) * tau_r)
-            allPassFilter_l[:, i] = np.exp(-1j * 2 * np.pi * (f - fc) * tau_l)
+        for i, f in enumerate(freq):
+            if f > fc:
+                allPassFilter_r[:, i] = np.exp(
+                    -1j * 2 * np.pi * (f - fc) * tau_r)
+                allPassFilter_l[:, i] = np.exp(-1j * 2 * np.pi * (f - fc) * tau_l)
 
-### fft
-HRTF_L = np.fft.rfft(HRIR_l_signal, NFFT)  # taking only the components [:, 0:int(NFFT / 2 + 1)] of the regular np.fft
-HRTF_R = np.fft.rfft(HRIR_r_signal, NFFT)
+    ### fft
+    HRTF_L = np.fft.rfft(HRIR_l_signal, NFFT)  # taking only the components [:, 0:int(NFFT / 2 + 1)] of the regular np.fft
+    HRTF_R = np.fft.rfft(HRIR_r_signal, NFFT)
 
-### applying the filter
-if HRTF_refinement:
-    HRTF_L = HRTF_L * allPassFilter_l
-    HRTF_R = HRTF_R * allPassFilter_r
+    ### applying the filter
+    if HRTF_refinement:
+        HRTF_L = HRTF_L * allPassFilter_l
+        HRTF_R = HRTF_R * allPassFilter_r
 
-    # Plots of the filter magnitude and phase
-    plot_HRTF_refinement(freq, allPassFilter_l, allPassFilter_r, HRTF_L, HRTF_R, NFFT, HRTF_refinement_plot)
+        # Plots of the filter magnitude and phase
+        plot_HRTF_refinement(freq, allPassFilter_l, allPassFilter_r, HRTF_L, HRTF_R, NFFT, HRTF_refinement_plot)
 
 ''' SH expansion '''
+
+
 if not MLS:
-    Hnm = np.stack(  # 2 sides, L and R
-        [
-            spatialFT(
-                HRTF_L,
-                HRIR.grid,
-                grid_type='sphe',
-                order_max=N,
-                kind="complex",
-                spherical_harmonic_bases=None,
-                weight=None,
-                leastsq_fit=True,
-                regularised_lstsq_fit=False,
-                MLS=False
-            ),
-            spatialFT(
-                HRTF_R,
-                HRIR.grid,
-                grid_type='sphe',
-                order_max=N,
-                kind="complex",
-                spherical_harmonic_bases=None,
-                weight=None,
-                leastsq_fit=True,
-                regularised_lstsq_fit=False,
-                MLS=False
-            ),
-        ]
-    )
+    if not loadHnm:
+        Hnm = np.stack(  # 2 sides, L and R
+            [
+                spatialFT(
+                    HRTF_L,
+                    HRIR.grid,
+                    grid_type='sphe',
+                    order_max=N,
+                    kind="complex",
+                    spherical_harmonic_bases=None,
+                    weight=None,
+                    leastsq_fit=True,
+                    regularised_lstsq_fit=False,
+                    MLS=False
+                ),
+                spatialFT(
+                    HRTF_R,
+                    HRIR.grid,
+                    grid_type='sphe',
+                    order_max=N,
+                    kind="complex",
+                    spherical_harmonic_bases=None,
+                    weight=None,
+                    leastsq_fit=True,
+                    regularised_lstsq_fit=False,
+                    MLS=False
+                ),
+            ]
+        )
+        np.savez_compressed('database/Hnm.npz', Hnm=Hnm, fs_h=fs_h)
+        print('saving Hnm coefficients')
+    else:
+        Hnm = loaded['Hnm']
 else:
-    Hnm = spatialFT(
-                np.stack((HRIR_l_signal, HRIR_r_signal), 0),
-                HRIR.grid,
-                grid_type='sphe',
-                order_max=N,
-                kind="complex",
-                spherical_harmonic_bases=None,
-                weight=None,
-                leastsq_fit=False,
-                regularised_lstsq_fit=False,
-                MLS=True,
-                fs=fs_min,
-                NFFT=NFFT
-    )
+    if not loadHnm:
+        Hnm = spatialFT(
+                    np.stack((HRIR_l_signal, HRIR_r_signal), 0),
+                    HRIR.grid,
+                    grid_type='sphe',
+                    order_max=N,
+                    kind="complex",
+                    spherical_harmonic_bases=None,
+                    weight=None,
+                    leastsq_fit=False,
+                    regularised_lstsq_fit=False,
+                    MLS=True,
+                    fs=fs_min,
+                    NFFT=NFFT
+        )
+        np.savez_compressed('database/Hnm.npz', Hnm=Hnm, fs_h=fs_h)
+        print('saving Hnm coefficients')
+    else:
+        Hnm = loaded['Hnm']
 
 DRFR = np.fft.rfft(DRIR, NFFT)  # rfft takes only the first part of the fft
 
@@ -231,8 +256,8 @@ Pnm = spatialFT(  # Pnm : Spatial Fourier Coefficients with nm coeffs in rows an
     weight=None,
     leastsq_fit=True,
     regularised_lstsq_fit=False,
-    MLS=False
-)
+    MLS=False,
+)# TODO change it back to leastsquares
 
 ''' Radial filter + smoothing of the coefficients'''
 
@@ -346,7 +371,15 @@ sl, sr = np.fft.irfft(Sl, NFFT), np.fft.irfft(Sr, NFFT)
 
 ''' Convolution with dry signal '''
 speed = len(rotation_sound_field_deg) // 2  # this parameter encodes the speed of the change form one direction to
-speed *=2
+speed *= 2
+
+# To export the channels corresponding to all directions
+
+# import scipy
+# scipy.io.savemat('exports/BRIR/BRIR_l.mat', dict(sl=np.transpose(sl)))
+# scipy.io.savemat('exports/BRIR/BRIR_r.mat', dict(sr=np.transpose(sr)))
+
+
 # another when the source is moving, if it is 0, then the source is not moving
 if speed:  # moving source
     sl_out = moving_convolution(sl, s, speed)  # sl is of shape [nb of directions x signal size]
@@ -356,7 +389,7 @@ else:  # static source
     sl = sl[0]
     sr = sr[0]
     if not real_time:
-        sl_out, sr_out = np.transpose(scipy.signal.fftconvolve(sl, s)), np.transpose(scipy.signal.fftconvolve(sr, s))
+        sl_out, sr_out = np.transpose(fftconvolve(sl, s)), np.transpose(fftconvolve(sr, s))
     else:  # taking samples of the signal and overlapping the result (no effect for now)
         sl_out, sr_out = overlap_add(Nwin, s, sl, sr)
 
@@ -384,18 +417,15 @@ sl_out, sr_out = sl_out / max, sr_out / max
 
 ''' Writing file '''
 
-sf.write('./exports/{0} pos={7} limiting={1} NFFT={2} realtime={3} HRTFmodif={4} Tapering={5} EQ={6} MLS={7}.wav'.format(
+write('./exports/{0} pos={1} MLS={2} rfi={3}.wav'.format(
     output_file_name,
-    str(amp_maxdB), str(NFFT),
-    str(real_time),
-    str(HRTF_refinement),
-    str(tapering_win),
-    str(eq),
     str(position),
-    str(MLS)),
+    str(MLS),
+    str(is_apply_rfi)),
     np.stack((sl_out, sr_out), axis=1), fs_min)
 
-
+# tac = time.perf_counter()
+# print(tac-tic)
 
 
 """
