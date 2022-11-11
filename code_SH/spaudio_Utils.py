@@ -14,6 +14,8 @@ def magls_bin(hrirs, N_sph, f_trans=None, hf_cont='angle', hf_delay=(0, 0), fs=N
     This binaural decoder renders the (least squares) binaural output below
     `f_trans`, while rendering a magnitude solution above.
 
+    Method was modified by Justin Sabaté to adapt it to the data available and structures in the code
+
 
     Parameters
     ----------
@@ -64,15 +66,10 @@ def magls_bin(hrirs, N_sph, f_trans=None, hf_cont='angle', hf_delay=(0, 0), fs=N
     :param Nfft:
     :py:func:`spaudiopy.decoder.sh2bin` : Decode Ambisonic streams to binaural.
     """
-    # assert (isinstance(hrirs, sig.HRIRs))
+
     if f_trans is None:
         f_trans = N_sph * 500  # from N > kr
-    '''Replaced by justin to match our measurements that are not using the same kind of objects'''
-    # fs = hrirs.fs
-    # hrirs_l = hrirs.left
-    # hrirs_r = hrirs.right
-    # azi = hrirs.grid['azi']
-    # zen = hrirs.grid['colat']
+
 
     if len(np.shape(hrirs)) == 2: #TODO poor solution because going to do it twice for nothing
         hrirs_l = hrirs
@@ -82,15 +79,9 @@ def magls_bin(hrirs, N_sph, f_trans=None, hf_cont='angle', hf_delay=(0, 0), fs=N
         hrirs_l = hrirs[0, :, :]
         hrirs_r = hrirs[1, :, :]
 
-    # azi = azi  # useless
-    # zen = elev
-    # gridpoints = gridpoints
-
-    # numSmpls = hrirs.left.shape[1]
     numSmpls = hrirs_l.shape[1]
 
     nfftmin = Nfft
-    # nfftmin = 1024
     nfft = np.max([nfftmin, numSmpls])
     freqs = np.fft.rfftfreq(nfft, 1 / fs)
 
@@ -100,8 +91,11 @@ def magls_bin(hrirs, N_sph, f_trans=None, hf_cont='angle', hf_delay=(0, 0), fs=N
     k_cuton = np.argmin(np.abs(freqs - f_trans))
 
     if basis is None:
-        Y = sph.sh_matrix(N_sph, azi, elev, 'real')  # TODO not sure about cartesian or spherical coordinates
+        # function that was used in the original spaudio function, not tested, might use cartesian or spherical
+        # coordinates, to be adapted if needed, also switch to complex will be needed
+        Y = sph.sh_matrix(N_sph, azi, elev, 'real')
     else:
+        # now used in the code
         Y = basis  # is not real anymore,
 
     Y_pinv = np.linalg.pinv(Y)

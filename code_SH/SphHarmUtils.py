@@ -249,7 +249,7 @@ def sph_harmonics(m, n, az, co, kind="complex"):
 
 def spatialFT(data, position_grid, grid_type='cart', order_max=10, kind="complex",
               spherical_harmonic_bases=None, weight=None,
-              leastsq_fit=False, regularised_lstsq_fit=False, MLS=False, fs=None, NFFT = 4096):
+              leastsq_fit=False, regularised_lstsq_fit=False, MLS=False, fs=None, NFFT=4096):
     """Perform spatial Fourier transform.
     Parameters
     ----------
@@ -265,6 +265,8 @@ def spatialFT(data, position_grid, grid_type='cart', order_max=10, kind="complex
     spherical_harmonic_bases : array_like, optional
         Spherical harmonic base coefficients (not yet weighted by spatial
         sampling grid) [Default: None]
+    MLS : used to get HRTF coefficients Hmn, magnitude least squares method to approximate better the magnitude at high
+        frequencies with disregarding the phase
     Returns
     -------
     Pnm : array_like
@@ -279,6 +281,7 @@ def spatialFT(data, position_grid, grid_type='cart', order_max=10, kind="complex
     .. [5] Rafaely, B. (2015). Fundamentals of Spherical Array Processing,
         (J. Benesty and W. Kellermann, Eds.) Springer Berlin Heidelberg,
         2nd ed., 196 pages. doi:10.1007/978-3-319-99561-8
+        :param MLS:
         :param kind:
         :param grid_type:
     """
@@ -297,10 +300,10 @@ def spatialFT(data, position_grid, grid_type='cart', order_max=10, kind="complex
 
     # Justin custom solver, magnitude least squares
     if MLS:
-
         ''' Try 5 new library, spaudio where function magls_bin adapted to match our needs'''
         print('Using Magnitude least squares to get HRTF in SH domain')
-        solution = magls_bin(hrirs=data, N_sph=order_max, f_trans=2000,fs = fs, azi = azi,elev = elev,gridpoints = position_grid, Nfft=NFFT, basis=spherical_harmonic_bases)
+        solution = magls_bin(hrirs=data, N_sph=order_max, f_trans=2000, fs=fs, azi=azi, elev=elev,
+                             gridpoints=position_grid, Nfft=NFFT, basis=spherical_harmonic_bases)
 
         return solution  # matrix multiplication with the HRTF (data in the frequency domain) already done in magls_bin
 
@@ -1195,4 +1198,3 @@ def get_n_m(nm, Nmax):
             m = nm - n ** 2
             return n, m - n
     return None
-
