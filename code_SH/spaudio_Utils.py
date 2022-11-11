@@ -74,16 +74,17 @@ def magls_bin(hrirs, N_sph, f_trans=None, hf_cont='angle', hf_delay=(0, 0), fs=N
     # azi = hrirs.grid['azi']
     # zen = hrirs.grid['colat']
 
-    if len(np.shape(hrirs))==2: #TODO poor solution because going to do it twice for nothing
+    if len(np.shape(hrirs)) == 2: #TODO poor solution because going to do it twice for nothing
         hrirs_l = hrirs
         hrirs_r = hrirs
         print('Warning, mono signal, magls should use 2 channels to return Hnm coefficients')
-    elif len(np.shape(hrirs))==3:
+    elif len(np.shape(hrirs)) == 3:
         hrirs_l = hrirs[0, :, :]
         hrirs_r = hrirs[1, :, :]
-    azi = azi  # useless
-    zen = elev
-    gridpoints = gridpoints
+
+    # azi = azi  # useless
+    # zen = elev
+    # gridpoints = gridpoints
 
     # numSmpls = hrirs.left.shape[1]
     numSmpls = hrirs_l.shape[1]
@@ -99,20 +100,16 @@ def magls_bin(hrirs, N_sph, f_trans=None, hf_cont='angle', hf_delay=(0, 0), fs=N
     k_cuton = np.argmin(np.abs(freqs - f_trans))
 
     if basis is None:
-        Y = sph.sh_matrix(N_sph, azi, zen, 'real')  # not sure about cartesian or spherical coordinates
+        Y = sph.sh_matrix(N_sph, azi, elev, 'real')  # TODO not sure about cartesian or spherical coordinates
     else:
         Y = basis  # is not real anymore,
 
     Y_pinv = np.linalg.pinv(Y)
 
     hrtfs_mls_nm = np.zeros((2, (N_sph + 1) ** 2, len(freqs)), dtype=hrtfs_l.dtype)
-    '''Original code '''
-    # phi_l_mod = np.zeros((hrirs.grid_points, len(freqs)))
-    # phi_r_mod = np.zeros((hrirs.grid_points, len(freqs)))
-    '''New code'''
+
     phi_l_mod = np.zeros((len(gridpoints[0]), len(freqs)))
     phi_r_mod = np.zeros((len(gridpoints[0]), len(freqs)))
-    # TODO: weights, transition, order dependent (not my todo)
 
     # linear part
     hrtfs_mls_nm[0, :, :k_cuton] = Y_pinv @ hrtfs_l[:, :k_cuton]
@@ -120,6 +117,7 @@ def magls_bin(hrirs, N_sph, f_trans=None, hf_cont='angle', hf_delay=(0, 0), fs=N
     phi_l_mod[:, :k_cuton] = np.angle(Y @ hrtfs_mls_nm[0, :, :k_cuton])
     phi_r_mod[:, :k_cuton] = np.angle(Y @ hrtfs_mls_nm[1, :, :k_cuton])
 
+    ''' Prediction of the angles ''' # TODO understand what they do
     if hf_cont == 'avg':
         # get the delta (from prediction frame)
         n_delta = 5
@@ -150,14 +148,15 @@ def magls_bin(hrirs, N_sph, f_trans=None, hf_cont='angle', hf_delay=(0, 0), fs=N
 
     # manipulate above k_cuton
     for k in range(k_cuton, len(freqs)):
+        # initializing with value from the previous bin, as described in the book
         phi_l_mod[:, k] = np.angle(Y @ hrtfs_mls_nm[0, :, k - 1])
         phi_r_mod[:, k] = np.angle(Y @ hrtfs_mls_nm[1, :, k - 1])
 
-        # forward predict phase
+        # forward predict phase -> Important step as described in the comment of the function
         phi_l_mod[:, k] = phi_l_mod[:, k] + delta_phi_l
         phi_r_mod[:, k] = phi_r_mod[:, k] + delta_phi_r
 
-        # transform
+        # transform, usual lstsquare
         hrtfs_mls_nm[0, :, k] = Y_pinv @ (np.abs(hrtfs_l[:, k]) *
                                           np.exp(1j * phi_l_mod[:, k]))
         hrtfs_mls_nm[1, :, k] = Y_pinv @ (np.abs(hrtfs_r[:, k]) *

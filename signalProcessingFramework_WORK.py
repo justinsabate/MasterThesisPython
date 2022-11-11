@@ -30,7 +30,7 @@ end_time = 60
 
 position = 7  # position of the measurement that is being used, position 7 => -23° azimuth
 
-offset = -23
+offset = -23  # to position one specific measurement in front if head tracking exportation wanted
 rotation_sound_field_deg = np.arange(-90, 91, 5)  # 0
 # rotation_sound_field_deg = [0] # to get it in front for position 7
 rotation_sound_field_deg += offset
@@ -43,7 +43,7 @@ HRTF_refinement = 0  # from [11]
 tapering_win = 1  # from soud field analysis toolbox + cf [36]
 eq = 1  # from sound field analysis toolbox + cf [23], could probably be calculated from HRTF but calculated from a sphere (scattering calculations)
 MLS = 1
-is_apply_rfi = 1   # TODO(see the effect, doing this because weird stuff happening in the low frequencies)
+is_apply_rfi = 1   # useful if MLS because a bit of unwanted stuff happening at low frequencies, but that is light
 
 output_file_name = signal_name
 
@@ -65,8 +65,9 @@ if HRTF_refinement == 0:
     HRTF_refinement_plot = 0
 
 if np.size(rotation_sound_field_deg) > 1:
-    real_time = 0
-    print('Real time set to 0, case with real time and many directions not implemented')
+    if real_time ==1 :
+        real_time = 0
+        print('Real time set to 0, case with real time and many directions not implemented')
 
 
 
@@ -373,11 +374,21 @@ sl, sr = np.fft.irfft(Sl, NFFT), np.fft.irfft(Sr, NFFT)
 speed = len(rotation_sound_field_deg) // 2  # this parameter encodes the speed of the change form one direction to
 speed *= 2
 
+''' Head tracking exports '''
 # To export the channels corresponding to all directions
 
 # import scipy
 # scipy.io.savemat('exports/BRIR/BRIR_l.mat', dict(sl=np.transpose(sl)))
 # scipy.io.savemat('exports/BRIR/BRIR_r.mat', dict(sr=np.transpose(sr)))
+
+# Try to resample now to see if difference or not, need for the shortest BRIR for head tracking TODO(find new solution, cannot do this)
+# sl = resample(sl, orig_sr=fs_min, target_sr=16000)
+# sr = resample(sr, orig_sr=fs_min, target_sr=16000)
+#
+# s = resample(s,fs_min,16000)
+# print('Resampling in the end done')
+# fs_min = 16000  # for export
+#
 
 
 # another when the source is moving, if it is 0, then the source is not moving

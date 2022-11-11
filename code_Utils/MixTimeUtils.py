@@ -74,7 +74,7 @@ def abel(IR, N, fs, peak_secure_margin):
 
             # number of tips outside the standard deviation
 
-            anz_s[n] = sum(abs(IR[0:n + N // 2 - 1]) > s[n])
+            anz_s[n] = sum(abs(IR[0:n + N // 2 - 1]) > s[n]) # returns False, True,False...
 
             # echo density
             echo_dens[n] = anz_s[n] / N
