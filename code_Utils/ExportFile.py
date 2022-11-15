@@ -41,7 +41,3 @@ s, fs_s = load(signal_name, sr=None, mono=False)
 #     np.transpose(s),
 #     fs_s
 # )
-
-## test measure mixing time
-tmp50, tmp95, tmp50_interchannel_mean, tmp95_interchannel_mean, echo_dens = data_based(np.transpose(DRIR), fs_r)
-print(tmp50)

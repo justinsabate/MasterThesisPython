@@ -5,6 +5,7 @@ import numpy as np
 import soundfile as sf
 import matplotlib.pyplot as plt
 
+from code_Utils.FilterUtils import firfilter, zerophasefilter, minimumphasefilter
 from code_Utils.MixTimeUtils import get_direct_index, data_based
 
 '''If plain wav file'''
@@ -56,8 +57,38 @@ refl = DRIR * refl_extractor
 
 'Modification of the reflections'
 refl_plot = np.copy(refl)
-gain = 0.2
-refl *= gain
+
+# # Applying a gain
+# gain = 0.2
+# refl *= gain
+
+# # Filtering those reflections
+cutoff = 4000
+trans_width = 200
+filter_type = 'highpass'
+fs_r = 48000
+# refl = firfilter(refl, fs_r, cutoff, trans_width, filter_type, numtaps=513, plot=True)
+refl = zerophasefilter(refl, cutoff, fs_r, filter_type=filter_type, plot=True)
+# refl = minimumphasefilter(refl, fs_r, cutoff, trans_width, filter_type, numtaps=513, plot=True)
+
+'Plot the modification of the reflections'
+fig, (ax1, ax2) = plt.subplots(2, 1)
+ax1.plot(t, refl_plot, label='Extracted reflections')
+
+ax1.grid()
+ax1.set_xlabel('Time(s)')
+ax1.set_ylabel('Amplitude')
+ax1.legend()
+delta_t = (tmp50_plot-tDirect)/4
+ax1.set_xlim(tDirect-delta_t, tmp50_plot+delta_t)
+
+ax2.plot(t, refl, label='Modified reflections', color='#ff7f0e')
+ax2.grid()
+ax2.set_xlabel('Time(s)')
+ax2.set_ylabel('Amplitude')
+ax2.legend()
+ax2.set_xlim(ax1.get_xlim())
+ax2.set_ylim(ax1.get_ylim())
 
 'Extracting the rest'
 rest = DRIR * (1-refl_extractor)
@@ -91,14 +122,15 @@ ax12.tick_params(axis='x', colors='green', rotation=10)
 ax2.plot(t, refl_plot, label='extracted reflections')
 ax2.plot(t, rest, label='remaining RIR')
 
-ax3.plot(t,refl_extractor, label='window')
+ax3.plot(t, refl_extractor, label='window')
 
-ax4.plot(t, recon, label='processed RIR\n reflections gain 0.2')
+ax4.plot(t, recon, label='processed RIR\n reflections filtered')
 
 axs = fig.get_axes()
-for ax in axs:
-    ax.set_xlabel('Time(s)')
-    ax.set_ylabel('Amplitude')
+for i, ax in enumerate(axs):
+    if i < (len(axs)-2):  # exclude the bars
+        ax.set_xlabel('Time(s)')
+        ax.set_ylabel('Amplitude')
     ax.legend()
     ax.grid()
     ax.set_xlim((0.1, 0.3))

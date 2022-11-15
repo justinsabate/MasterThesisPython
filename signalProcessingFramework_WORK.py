@@ -165,8 +165,10 @@ if not loadHnm:
         # NFFT = 2048
         # freq = np.arange(0, NFFT // 2 + 1) * (fs_min / NFFT)
 
-        # Not actual compensation by the filter but indeed a calculated one according to paper [11], it is said to have no difference perceptually and it is more simple
-        allPassFilter_r = np.ones((len(tau_r), NFFT // 2 + 1), dtype=np.complex128)  # shape : nb channels x frequency bins
+        # Not actual compensation by the filter but indeed an estimated one according to paper [11] (estimation on a
+        # sphere, instead of the actual head compensation), it is said to have no difference perceptually and it is
+        # more simple
+        allPassFilter_r = np.ones((len(tau_r), NFFT // 2 + 1), dtype=np.complex128)  # shape : nb channels X frequency bins
         allPassFilter_l = np.ones((len(tau_l), NFFT // 2 + 1), dtype=np.complex128)
 
         for i, f in enumerate(freq):
