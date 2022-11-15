@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_response(fs, w, h, title):
+def plot_response(fs, w, h, title, fig=None, subplot=None, unwrap=True):
     "Utility function to plot response functions"
     # # plot on separate figures
     # fig = plt.figure()
@@ -24,11 +24,18 @@ def plot_response(fs, w, h, title):
     # ax2.set_ylabel('Phase (rad)')
 
     # # plot on same figure
-    fig = plt.figure()
-    ax1 = fig.add_subplot(111)
+    if fig is None:
+        fig = plt.figure()
+    if subplot is None:
+        subplot = 111
+        ax1 = fig.add_subplot(subplot)
+    else:
+        ax1 = fig.get_axes()[subplot]
+
     ax1.plot(0.5 * fs * w / np.pi, 20 * np.log10(np.abs(h)), color='#1f77b4')
     ax1.set_xscale('log')
     ax1.set_ylim(-40, 5)
+    # ax1.set_ylim(-175, 5)
     ax1.set_xlim(1, 0.5 * fs)
     ax1.grid(True)
     ax1.set_xlabel('Frequency (Hz)')
@@ -38,11 +45,16 @@ def plot_response(fs, w, h, title):
     ax1.tick_params(axis='y', colors='#1f77b4') #, labelsize='12'
 
     ax2 = ax1.twinx()
-    ax2.plot(0.5 * fs * w / np.pi, np.unwrap(np.angle(h)), color='#ff7f0e')
+    if unwrap:
+        ax2.plot(0.5 * fs * w / np.pi, np.unwrap(np.angle(h)), color='#ff7f0e')
+    else:
+        ax2.plot(0.5 * fs * w / np.pi, np.angle(h), color='#ff7f0e')
     # ax2.grid(True)
     # ax2.set_xlabel('Frequency (Hz)')
     ax2.set_ylabel('Phase (rad)', color='#ff7f0e')
     ax2.tick_params(axis='y', colors='#ff7f0e') #, labelsize='12'
+
+    return fig, ax1, ax2
 
 
 

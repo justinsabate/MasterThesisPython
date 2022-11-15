@@ -13,6 +13,7 @@ from code_Utils.MovSrcUtils import moving_convolution
 from code_Utils.RealTimeUtils import overlap_add
 from code_Utils.SamplingUtils import resample_if_needed
 from code_plots.plots_functions import plot_HRTF_refinement, plot_radial, plot_freq_output, plot_grid
+
 # import time
 # tic = time.perf_counter()
 
@@ -43,7 +44,7 @@ HRTF_refinement = 0  # from [11]
 tapering_win = 1  # from soud field analysis toolbox + cf [36]
 eq = 1  # from sound field analysis toolbox + cf [23], could probably be calculated from HRTF but calculated from a sphere (scattering calculations)
 MLS = 1
-is_apply_rfi = 1   # useful if MLS because a bit of unwanted stuff happening at low frequencies, but that is light
+is_apply_rfi = 1  # useful if MLS because a bit of unwanted stuff happening at low frequencies, but that is light
 
 output_file_name = signal_name
 
@@ -65,11 +66,9 @@ if HRTF_refinement == 0:
     HRTF_refinement_plot = 0
 
 if np.size(rotation_sound_field_deg) > 1:
-    if real_time ==1 :
+    if real_time == 1:
         real_time = 0
         print('Real time set to 0, case with real time and many directions not implemented')
-
-
 
 '''Get the data'''
 # Be sure they are the same type (float32 for ex)
@@ -127,7 +126,8 @@ fs_min = min([fs_r, fs_h, fs_s, sampling_frequency])
 
 ### same sampling frequency
 # HRIR_l_signal can be None
-DRIR, s, HRIR_l_signal, HRIR_r_signal = resample_if_needed(fs_r, fs_min, fs_h, fs_s, DRIR, s, HRIR_l_signal, HRIR_r_signal)
+DRIR, s, HRIR_l_signal, HRIR_r_signal = resample_if_needed(fs_min, fs_r, DRIR, fs_s, s, fs_h, HRIR_l_signal,
+                                                           HRIR_r_signal)
 
 ### Taking 50ms/100ms of the RIR signal
 # tries : 6000 vs 6600 for the first index of the RIR (before resampling)
@@ -168,7 +168,8 @@ if not loadHnm:
         # Not actual compensation by the filter but indeed an estimated one according to paper [11] (estimation on a
         # sphere, instead of the actual head compensation), it is said to have no difference perceptually and it is
         # more simple
-        allPassFilter_r = np.ones((len(tau_r), NFFT // 2 + 1), dtype=np.complex128)  # shape : nb channels X frequency bins
+        allPassFilter_r = np.ones((len(tau_r), NFFT // 2 + 1),
+                                  dtype=np.complex128)  # shape : nb channels X frequency bins
         allPassFilter_l = np.ones((len(tau_l), NFFT // 2 + 1), dtype=np.complex128)
 
         for i, f in enumerate(freq):
@@ -178,7 +179,8 @@ if not loadHnm:
                 allPassFilter_l[:, i] = np.exp(-1j * 2 * np.pi * (f - fc) * tau_l)
 
     ### fft
-    HRTF_L = np.fft.rfft(HRIR_l_signal, NFFT)  # taking only the components [:, 0:int(NFFT / 2 + 1)] of the regular np.fft
+    HRTF_L = np.fft.rfft(HRIR_l_signal,
+                         NFFT)  # taking only the components [:, 0:int(NFFT / 2 + 1)] of the regular np.fft
     HRTF_R = np.fft.rfft(HRIR_r_signal, NFFT)
 
     ### applying the filter
@@ -190,7 +192,6 @@ if not loadHnm:
         plot_HRTF_refinement(freq, allPassFilter_l, allPassFilter_r, HRTF_L, HRTF_R, NFFT, HRTF_refinement_plot)
 
 ''' SH expansion '''
-
 
 if not MLS:
     if not loadHnm:
@@ -229,18 +230,18 @@ if not MLS:
 else:
     if not loadHnm:
         Hnm = spatialFT(
-                    np.stack((HRIR_l_signal, HRIR_r_signal), 0),
-                    HRIR.grid,
-                    grid_type='sphe',
-                    order_max=N,
-                    kind="complex",
-                    spherical_harmonic_bases=None,
-                    weight=None,
-                    leastsq_fit=False,
-                    regularised_lstsq_fit=False,
-                    MLS=True,
-                    fs=fs_min,
-                    NFFT=NFFT
+            np.stack((HRIR_l_signal, HRIR_r_signal), 0),
+            HRIR.grid,
+            grid_type='sphe',
+            order_max=N,
+            kind="complex",
+            spherical_harmonic_bases=None,
+            weight=None,
+            leastsq_fit=False,
+            regularised_lstsq_fit=False,
+            MLS=True,
+            fs=fs_min,
+            NFFT=NFFT
         )
         np.savez_compressed('database/Hnm.npz', Hnm=Hnm, fs_h=fs_h)
         print('saving Hnm coefficients')
@@ -260,7 +261,7 @@ Pnm = spatialFT(  # Pnm : Spatial Fourier Coefficients with nm coeffs in rows an
     leastsq_fit=True,
     regularised_lstsq_fit=False,
     MLS=False,
-)# TODO change it back to leastsquares
+)
 
 ''' Radial filter + smoothing of the coefficients'''
 
@@ -293,16 +294,11 @@ dn = gen.radial_filter_fullspec(
 if is_apply_rfi:
     # improve radial filters (remove DC offset and make casual) [1]
     dn, _, dn_delay_samples = process.rfi(dn, kernelSize=NFFT, highPass=0.0065)  # zero phase high pass
+    # already making the filter causal in the rfi function
 else:
     # make radial filters causal
     dn_delay_samples = NFFT / 2
     dn *= gen.delay_fd(target_length_fd=dn.shape[-1], delay_samples=dn_delay_samples)
-
-
-# ### make radial filters causal
-# dn_delay_samples = NFFT / 2
-# dn *= gen.delay_fd(target_length_fd=dn.shape[-1], delay_samples=dn_delay_samples)
-# ### additional treatment possible cf is_apply_rfi in the toolbox to remove the dc component with high passing, not made here
 
 
 ''' Implementing the different improvements of the auralized signal '''
@@ -317,7 +313,6 @@ if eq:
         is_tapering=tapering_win,
     )
 
-
     dn_shf_delay_samples = NFFT / 2
     dn_shf *= gen.delay_fd(
         target_length_fd=dn_shf.shape[-1], delay_samples=dn_shf_delay_samples
@@ -330,7 +325,6 @@ else:
     dn *= gen.delay_fd(
         target_length_fd=dn.shape[-1], delay_samples=dn_shf_delay_samples
     )
-
 
 ### improvement : tapering cf paper [23]
 if tapering_win:  # half sided hanning window
@@ -347,7 +341,7 @@ plot_radial(freq, dn, radial_plot)
 alpha = np.array(np.deg2rad(rotation_sound_field_deg))  # to be able to call alpha[0] if
 print('Head rotations (in grad) : ' + str(alpha))
 
-###Complex convolution : Has to take the opposite of the m but not the n cf paper [12] (justin's references)
+### Complex convolution : Has to take the opposite of the m but not the n cf paper [12] (justin's references)
 nm_reversed_m = reverse_nm(N)
 
 ### Initializations
@@ -376,7 +370,7 @@ sl, sr = np.fft.irfft(Sl, NFFT), np.fft.irfft(Sr, NFFT)
 speed = len(rotation_sound_field_deg) // 2  # this parameter encodes the speed of the change form one direction to
 speed *= 2
 
-''' Head tracking exports '''
+' Head tracking export trials '
 # To export the channels corresponding to all directions
 
 # import scipy
@@ -393,7 +387,6 @@ speed *= 2
 #
 
 
-# another when the source is moving, if it is 0, then the source is not moving
 if speed:  # moving source
     sl_out = moving_convolution(sl, s, speed)  # sl is of shape [nb of directions x signal size]
     sr_out = moving_convolution(sr, s, speed)

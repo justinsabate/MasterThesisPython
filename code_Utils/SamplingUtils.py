@@ -1,9 +1,9 @@
 from librosa import resample
 
-def resample_if_needed(fs_r, fs_min, fs_h, fs_s, DRIR, s, HRIR_l_signal=None, HRIR_r_signal=None):
+def resample_if_needed(fs_min, fs_r, DRIR, fs_s, s, fs_h=48000,  HRIR_l_signal=None, HRIR_r_signal=None):
     """Function that downsamples all the signals to the lowest sampling frequency fs_min
     fs_r corresponds to DRIR,
-    fs_h corresponds to HRIR signals,
+    fs_h corresponds to HRIR signals, if no signal, set to 48000 so no influence on the rest
     fs_s corresponds to s"""
 
 

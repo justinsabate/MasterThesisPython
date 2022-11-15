@@ -4,9 +4,28 @@ from librosa import load
 import numpy as np
 import soundfile as sf
 import matplotlib.pyplot as plt
+from scipy.signal import fftconvolve
 
-from code_Utils.FilterUtils import firfilter, zerophasefilter, minimumphasefilter
+from code_Utils.FilterUtils import firfilter, zerophasefilter, minimumphasefilter, plot_response
 from code_Utils.MixTimeUtils import get_direct_index, data_based
+from code_Utils.SamplingUtils import resample_if_needed
+
+'''Code controls'''
+# Plots
+plot = 1
+
+# Signal to be convolved
+signal_name = 'BluesA_GitL'  # without file extension, in wavfiles folder
+extension = '.wav'
+start_time = 0
+end_time = 10
+
+# Filtering of early reflections
+method = 'zero' # mini, zero, fir, gain are the different possibilities
+cutoff = 4000
+trans_width = 200
+filter_type = 'lowpass'
+fs_r = 48000
 
 '''If plain wav file'''
 # file1 = 'BluesA_GitL zeros in the beginning rot=0 pos=11 limiting=18NFFT=4096 realtime=0 HRTFmodif=1 Tapering=1 EQ=1'
@@ -19,7 +38,7 @@ from code_Utils.MixTimeUtils import get_direct_index, data_based
 measurementFileName = './database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
 position = 4
 channel = 9
-outputFileName = 'processedIR'
+outputFileName = ''+method+'_'+filter_type
 
 with h5py.File(measurementFileName, "r") as f:
     measurementgroupkey = list(f.keys())[0]
@@ -59,36 +78,60 @@ refl = DRIR * refl_extractor
 refl_plot = np.copy(refl)
 
 # # Applying a gain
-# gain = 0.2
-# refl *= gain
+
 
 # # Filtering those reflections
-cutoff = 4000
-trans_width = 200
-filter_type = 'highpass'
-fs_r = 48000
-# refl = firfilter(refl, fs_r, cutoff, trans_width, filter_type, numtaps=513, plot=True)
-refl = zerophasefilter(refl, cutoff, fs_r, filter_type=filter_type, plot=True)
-# refl = minimumphasefilter(refl, fs_r, cutoff, trans_width, filter_type, numtaps=513, plot=True)
+
+if method == 'zero':
+    refl = zerophasefilter(refl, cutoff, fs_r, filter_type=filter_type, plot=True)
+    print('Zero phase filtering used')
+elif method == 'mini':
+    refl = minimumphasefilter(refl, fs_r, cutoff, trans_width, filter_type, numtaps=513, plot=True)
+    print('Minimum phase filtering used')
+elif method == 'gain':
+    gain = 1
+    refl *= gain
+else:
+    refl = firfilter(refl, fs_r, cutoff, trans_width, filter_type, numtaps=513, plot=True)
+    print('Simple fir filter used, phase variations expected')
 
 'Plot the modification of the reflections'
-fig, (ax1, ax2) = plt.subplots(2, 1)
-ax1.plot(t, refl_plot, label='Extracted reflections')
+if plot:
+    'Time representation'
+    fig, (ax1, ax2) = plt.subplots(2, 1)
+    ax1.plot(t, refl_plot, label='Extracted reflections')
+    ax1.grid()
+    ax1.set_xlabel('Time(s)')
+    ax1.set_ylabel('Amplitude')
+    ax1.legend()
+    delta_t = (tmp50_plot-tDirect)/4
+    ax1.set_xlim(tDirect-delta_t, tmp50_plot+delta_t)
 
-ax1.grid()
-ax1.set_xlabel('Time(s)')
-ax1.set_ylabel('Amplitude')
-ax1.legend()
-delta_t = (tmp50_plot-tDirect)/4
-ax1.set_xlim(tDirect-delta_t, tmp50_plot+delta_t)
+    ax2.plot(t, refl, label='Modified reflections', color='#ff7f0e')
+    ax2.grid()
+    ax2.set_xlabel('Time(s)')
+    ax2.set_ylabel('Amplitude')
+    ax2.legend()
+    ax2.set_xlim(ax1.get_xlim())
+    ax2.set_ylim(ax1.get_ylim())
+    fig.suptitle('Early reflections - Time representation')
 
-ax2.plot(t, refl, label='Modified reflections', color='#ff7f0e')
-ax2.grid()
-ax2.set_xlabel('Time(s)')
-ax2.set_ylabel('Amplitude')
-ax2.legend()
-ax2.set_xlim(ax1.get_xlim())
-ax2.set_ylim(ax1.get_ylim())
+    'Frequency representation'
+    h1 = np.fft.rfft(refl_plot)
+    h2 = np.fft.rfft(refl)
+    f = np.linspace(0, 1, len(h1))
+    fig = plt.subplots(2, 1)[0]  # because subplots does not return a figure but a tuple with the figure inside
+    fig, ax1, ax2 = plot_response(fs_r, 2 * np.pi * f, h1, 'Extracted reflections', fig, subplot=0, unwrap=True)
+    ax1.set_ylim(-100, 5)
+    # To study the phase, set unwrap to False to see something and uncomment the next 2 lines
+    # ax2.set_ylim(-5, 5)
+    # ax2.set_xlim(cutoff - trans_width/3, cutoff + trans_width/3)
+    fig, ax1, ax2 = plot_response(fs_r, 2 * np.pi * f, h2, 'Modified reflections', fig, subplot=1, unwrap=True)
+    ax1.set_ylim(-100, 5)
+    # To study the phase, set unwrap to False to see something and uncomment the next 2 lines
+    # ax2.set_ylim(-5, 5)
+    # ax2.set_xlim(cutoff - trans_width/3, cutoff + trans_width/3)
+    fig.suptitle('Early reflections - Frequency representation')
 
 'Extracting the rest'
 rest = DRIR * (1-refl_extractor)
@@ -97,49 +140,64 @@ rest = DRIR * (1-refl_extractor)
 recon = rest + refl
 
 '''Plot the window on the signal waveform'''
-fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
-ax1.plot(t, DRIR, label='Original RIR')
+if plot:
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+    ax1.plot(t, DRIR, label='Original RIR')
 
-ax11 = ax1.twiny()
-ax11.bar(tDirect,
-        height=2*np.max(abs(DRIR)),
-        width=0.002,
-        tick_label='Direct sound: '+str(tDirect)[0:4]+'sec',
-        bottom=-np.max(abs(DRIR)),
-        color='red')
-ax11.tick_params(axis='x', colors='red', rotation=10)
+    ax11 = ax1.twiny()
+    ax11.bar(tDirect,
+            height=2*np.max(abs(DRIR)),
+            width=0.002,
+            tick_label='Direct sound: '+str(tDirect)[0:4]+'sec',
+            bottom=-np.max(abs(DRIR)),
+            color='red')
+    ax11.tick_params(axis='x', colors='red', rotation=10)
 
-ax12 = ax1.twiny()
-ax12.bar(tmp50_plot,
-         height=2 * np.max(abs(DRIR)),
-         width=0.002,
-         tick_label='tmp50: ' + str(tmp50_plot)[0:4] + 'sec',
-         bottom=-np.max(abs(DRIR)),
-         color='green'
-         )
-ax12.tick_params(axis='x', colors='green', rotation=10)
+    ax12 = ax1.twiny()
+    ax12.bar(tmp50_plot,
+             height=2 * np.max(abs(DRIR)),
+             width=0.002,
+             tick_label='tmp50: ' + str(tmp50_plot)[0:4] + 'sec',
+             bottom=-np.max(abs(DRIR)),
+             color='green'
+             )
+    ax12.tick_params(axis='x', colors='green', rotation=10)
 
-ax2.plot(t, refl_plot, label='extracted reflections')
-ax2.plot(t, rest, label='remaining RIR')
+    ax2.plot(t, refl_plot, label='extracted reflections')
+    ax2.plot(t, rest, label='remaining RIR')
 
-ax3.plot(t, refl_extractor, label='window')
+    ax3.plot(t, refl_extractor, label='window')
 
-ax4.plot(t, recon, label='processed RIR\n reflections filtered')
+    ax4.plot(t, recon, label='processed RIR\n reflections filtered')
 
-axs = fig.get_axes()
-for i, ax in enumerate(axs):
-    if i < (len(axs)-2):  # exclude the bars
-        ax.set_xlabel('Time(s)')
-        ax.set_ylabel('Amplitude')
-    ax.legend()
-    ax.grid()
-    ax.set_xlim((0.1, 0.3))
-plt.show()
+    axs = fig.get_axes()
+    for i, ax in enumerate(axs):
+        if i < (len(axs)-2):  # exclude the bars
+            ax.set_xlabel('Time(s)')
+            ax.set_ylabel('Amplitude')
+        ax.legend()
+        ax.grid()
+        ax.set_xlim((0.1, 0.3))
+    plt.show()
 
+'''Convolution with dry signal to try to hear differences on the method to filter the early reflections'''
+### Loading the anechoic signal to be convolved
+s, fs_s = load('./wavfiles/' + signal_name + extension, sr=None, mono=True, offset=start_time,
+               duration=end_time - start_time, dtype=np.float32)
+
+### Resampling, for now everything is 48000
+fs_min = min(fs_s, fs_r)
+resample_if_needed(fs_min, fs_r, refl, fs_s, s)
+
+### Convolution
+s_out = np.transpose(fftconvolve(refl, s))
+
+### Normalization
+s_out = s_out/max(np.abs(s_out))
 
 '''To export the processed RIR'''
-# sf.write('./exports/{0}.wav'.format(
-#     outputFileName,
-#     recon,
-#     fs_r
-# )
+sf.write('./exports/{0}.wav'.format(
+    outputFileName),
+    s_out,  # recon expected here
+    fs_r
+)
