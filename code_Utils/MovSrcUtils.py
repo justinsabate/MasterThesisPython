@@ -14,7 +14,7 @@ def moving_convolution(BRIR, signal, speed):
     convolved = np.zeros(Nwin*nb_window)
     while i+Nwin < (length-length % Nwin):
         signal_part = signal[i:(i+Nwin)]
-        convolved_part = np.transpose(scipy.signal.fftconvolve(signal_part,BRIR[j], mode="same")) # to keep the same size as signal_part
+        convolved_part = np.transpose(scipy.signal.fftconvolve(signal_part, BRIR[j], mode="same")) # to keep the same size as signal_part
         convolved_part *= window
         convolved[i:(i+Nwin)] += convolved_part
         i += Nshift

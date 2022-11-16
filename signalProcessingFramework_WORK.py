@@ -27,24 +27,28 @@ measurementFileName = 'database/Measurements-10-oct/DataEigenmikeDampedRoom10oct
 signal_name = 'BluesA_GitL'  # without file extension, in wavfiles folder
 extension = '.wav'
 start_time = 0
-end_time = 60
+end_time = 90
 
 position = 7  # position of the measurement that is being used, position 7 => -23° azimuth
 
-offset = -23  # to position one specific measurement in front if head tracking exportation wanted
-rotation_sound_field_deg = np.arange(-90, 91, 5)  # 0
-# rotation_sound_field_deg = [0] # to get it in front for position 7
-rotation_sound_field_deg += offset
+offset = 0  # -23  # to position one specific measurement in front if head tracking exportation wanted
+# rotation_sound_field_deg = np.arange(-360, 361, 10) #np.arange(-90, 91, 5)
+rotation_sound_field_deg = np.zeros(1)
+rotation_sound_field_deg += offset  # to get it in front for position 7 with offset -23
 
 '''Careful, loadHnm has to be set to 0 in case of changing the methods to obtain the Hnm coefficients'''
 loadHnm = 1  # to load or calculate the Hnm coefficients, getting faster results
+
+'''Loading preprocessed (modified) DRIR or taking the measured one instead'''
+loadDRIR = 1  # to load preprocessed DRIR obtained with the code ProcessRIR, if 0, not processed DRIR
+loadDRIR_filename = 'DRIRs_processed_pos'+str(position)+'_cut2000_width200_highpass.npz'
 
 real_time = 0
 HRTF_refinement = 0  # from [11]
 tapering_win = 1  # from soud field analysis toolbox + cf [36]
 eq = 1  # from sound field analysis toolbox + cf [23], could probably be calculated from HRTF but calculated from a sphere (scattering calculations)
 MLS = 1
-is_apply_rfi = 1  # useful if MLS because a bit of unwanted stuff happening at low frequencies, but that is light
+is_apply_rfi = 0 #todo : put it back probably, depending on the content  # useful if MLS because a bit of unwanted stuff happening at low frequencies, but that is light
 
 output_file_name = signal_name
 
@@ -74,15 +78,22 @@ if np.size(rotation_sound_field_deg) > 1:
 # Be sure they are the same type (float32 for ex)
 
 ### Measurement data
-
-with File(measurementFileName, "r") as f:
-    measurementgroupkey = list(f.keys())[0]
-    DRIR = f[measurementgroupkey]['RIRs'][position, :,
-           :]  # RIR, 106 measurements of the 32 positions eigenmike x number of samples
-    MetaDatagroupkey = list(f.keys())[1]
-    fs_r = f[MetaDatagroupkey].attrs['fs']  # Sampling frequency
-    # NFFT = np.shape(DRIR)[-1] # too big
-    f.close()
+if not loadDRIR:
+    print('Loading measured (non modified) DRIR')
+    with File(measurementFileName, "r") as f:
+        measurementgroupkey = list(f.keys())[0]
+        DRIR = f[measurementgroupkey]['RIRs'][position, :,
+               :]  # RIR, 106 measurements of the 32 positions eigenmike x number of samples
+        MetaDatagroupkey = list(f.keys())[1]
+        fs_r = f[MetaDatagroupkey].attrs['fs']  # Sampling frequency
+        # NFFT = np.shape(DRIR)[-1] # too big
+        f.close()
+else:
+    print('Loading modified DRIR')
+    loaded = np.load('database/'+loadDRIR_filename)
+    DRIR = loaded['DRIRs_processed']
+    fs_r = loaded['fs_r']
+    # avg_mixtime = loaded['avg_mixtime']
 
 grid = get_eigenmike_grid(plot=False)
 plot_grid(grid, grid_plot)
@@ -165,7 +176,7 @@ if not loadHnm:
         # NFFT = 2048
         # freq = np.arange(0, NFFT // 2 + 1) * (fs_min / NFFT)
 
-        # Not actual compensation by the filter but indeed an estimated one according to paper [11] (estimation on a
+        # Not actual compensation by the filter but instead an estimated one according to paper [11] (estimation on a
         # sphere, instead of the actual head compensation), it is said to have no difference perceptually and it is
         # more simple
         allPassFilter_r = np.ones((len(tau_r), NFFT // 2 + 1),
@@ -423,11 +434,12 @@ sl_out, sr_out = sl_out / max, sr_out / max
 
 ''' Writing file '''
 
-write('./exports/{0} pos={1} MLS={2} rfi={3}.wav'.format(
+write('./exports/{0} pos={1} MLS={2} rfi={3} preprocessed={4}.wav'.format(
     output_file_name,
     str(position),
     str(MLS),
-    str(is_apply_rfi)),
+    str(is_apply_rfi),
+    str(loadDRIR)),
     np.stack((sl_out, sr_out), axis=1), fs_min)
 
 # tac = time.perf_counter()
