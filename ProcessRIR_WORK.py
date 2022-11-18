@@ -12,8 +12,8 @@ from code_Utils.SamplingUtils import resample_if_needed
 
 '''Code controls'''
 # Plots
-plot1 = 0
-plot2 = 0
+plot1 = 0  # Filter applied to the early reflections
+plot2 = 1  # Early reflections modification process
 
 # Signal to be convolved
 signal_name = 'BluesA_GitL'  # without file extension, in wavfiles folder
@@ -23,14 +23,14 @@ end_time = 10
 
 # Filtering of early reflections
 method = 'gain'  # mini, zero, fir, gain are the different possibilities
-gain = 2
-cutoff = 2000
+gain = 0.2
+cutoff = 800
 trans_width = 200
-filter_type = 'highpass'
+filter_type = 'lowpass'
 
 '''If h5py file, need to extract a position and a channel form this'''
 measurementFileName = './database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
-position = 7
+position = 15
 # channel = 9
 # outputFileName for convolved signal in case it is needed
 outputFileName = '' + method + '_' + filter_type
@@ -129,7 +129,6 @@ for channel in range(len(DRIRs)):
         refl = minimumphasefilter(refl, fs_r, cutoff, trans_width, filter_type, numtaps=513, plot=plot1)
         print('Minimum phase filtering used')
     elif method == 'gain':
-
         refl *= gain
     else:
         refl = firfilter(refl, fs_r, cutoff, trans_width, filter_type, numtaps=513, plot=plot1)
@@ -226,7 +225,12 @@ for channel in range(len(DRIRs)):
     print('Channel nb ' + str(channel) + ' processed')
 
 'Saving the file as a numpy array'
-filename = 'database/DRIRs_processed_'+'pos'+str(position)+'_cut'+str(cutoff)+'_width'+str(trans_width)+'_'+filter_type+'.npz'
+if method == 'gain':  # default, not using a filter, just applying a gain
+    filename = 'database/DRIRs_processed_'+'pos'+str(position)+'_cut'+str(cutoff)+'_width'+str(trans_width)+'_'+method+'.npz'
+else:  # in case a filter is applied, specify which filter and which method
+    filename = 'database/DRIRs_processed_' + 'pos' + str(position) + '_cut' + str(cutoff) + '_width' + str(
+        trans_width) + '_' + filter_type + '_' + method + '.npz'
+
 np.savez_compressed(filename,
                     DRIRs_processed=DRIRs_processed,
                     fs_r=fs_r,

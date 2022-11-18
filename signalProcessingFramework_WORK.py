@@ -17,20 +17,21 @@ from code_plots.plots_functions import plot_HRTF_refinement, plot_radial, plot_f
 # import time
 # tic = time.perf_counter()
 
-# sys.path.insert(0, "/Users/justinsabate/ThesisPython/code_SH")
+'''Order of the spherical harmonics'''
+N = 4 # maximum with the em32 eigenmike
 
-# Initializations
-N = 4  # 1 to input for changed for MLS
-
+'''Selection of the measurements'''
 measurementFileName = 'database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
+
 
 signal_name = 'BluesA_GitL'  # without file extension, in wavfiles folder
 extension = '.wav'
 start_time = 0
 end_time = 90
 
-position = 7  # position of the measurement that is being used, position 7 => -23° azimuth
+position = 15  # position of the measurement that is being used, position 7 => -23° azimuth
 
+'''Rotation and head positionning : rotation around the listener if multiple values in rotation_sound_field_deg'''
 offset = 0  # -23  # to position one specific measurement in front if head tracking exportation wanted
 # rotation_sound_field_deg = np.arange(-360, 361, 10) #np.arange(-90, 91, 5)
 rotation_sound_field_deg = np.zeros(1)
@@ -39,28 +40,36 @@ rotation_sound_field_deg += offset  # to get it in front for position 7 with off
 '''Careful, loadHnm has to be set to 0 in case of changing the methods to obtain the Hnm coefficients'''
 loadHnm = 1  # to load or calculate the Hnm coefficients, getting faster results
 
-'''Loading preprocessed (modified) DRIR or taking the measured one instead'''
+'''Loading preprocessed (==modified) DRIR or taking the measured one instead'''
 loadDRIR = 1  # to load preprocessed DRIR obtained with the code ProcessRIR, if 0, not processed DRIR
-loadDRIR_filename = 'DRIRs_processed_pos'+str(position)+'_cut2000_width200_highpass.npz'
+loadDRIR_filename = 'DRIRs_processed_pos'+str(position)+'_cut800_width200_gain.npz'
 
+'''Exporting BRIR for metrics calculation'''
+exportBRIR = 1
+
+'''Convolving with the dry signal to write the wav binauralization'''
+audiofileConvolve = 1
+
+'''Algorithm choices, different refinements'''
 real_time = 0
 HRTF_refinement = 0  # from [11]
-tapering_win = 1  # from soud field analysis toolbox + cf [36]
+tapering_win = 1  # from sound field analysis toolbox + cf [36]
 eq = 1  # from sound field analysis toolbox + cf [23], could probably be calculated from HRTF but calculated from a sphere (scattering calculations)
 MLS = 1
-is_apply_rfi = 0 #todo : put it back probably, depending on the content  # useful if MLS because a bit of unwanted stuff happening at low frequencies, but that is light
+is_apply_rfi = 0  # todo : maybe not put it back, weird results with some measurements but nice with others, depending on the content  # useful if MLS because a bit of unwanted stuff happening at low frequencies, but that is light
 
-output_file_name = signal_name
-
+'''Plots choices'''
 radial_plot = 0
 freq_output_plot = 0
 HRTF_refinement_plot = 0
 grid_plot = 0
 DRIR_plot = 0
 
+'''Some initializations'''
 amp_maxdB = 18  # for the radial filter see ref [13] ch 3.6.6 and 3.7.3.3
 Nwin = 512  # for the real time processing, but no time difference, might use it in the future
 sampling_frequency = 32000  # below, one can clearly hear the difference
+output_file_name = signal_name
 
 '''Mandatory conditions'''
 if MLS:
@@ -377,10 +386,6 @@ for i in range(np.size(alpha)):  # if multiple directions to process, in case of
 sl, sr = np.fft.irfft(Sl, NFFT), np.fft.irfft(Sr, NFFT)
 # using the complex conjugate reversed instead of doing it by hand and using np.fft.ifft
 
-''' Convolution with dry signal '''
-speed = len(rotation_sound_field_deg) // 2  # this parameter encodes the speed of the change form one direction to
-speed *= 2
-
 ' Head tracking export trials '
 # To export the channels corresponding to all directions
 
@@ -397,50 +402,63 @@ speed *= 2
 # fs_min = 16000  # for export
 #
 
+'Export of BRIR for metric calculation'
+if exportBRIR:
+    BRIR_filename = 'BRIR'
+    write('./exports/BRIR/{0} pos={1} MLS={2} rfi={3} preprocessed={4}.wav'.format(
+        BRIR_filename,
+        str(position),
+        str(MLS),
+        str(is_apply_rfi),
+        str(loadDRIR)),
+        np.stack((sl[0], sr[0]), axis=1), fs_min)
+    print('BRIR file written')
 
-if speed:  # moving source
-    sl_out = moving_convolution(sl, s, speed)  # sl is of shape [nb of directions x signal size]
-    sr_out = moving_convolution(sr, s, speed)
-else:  # static source
-    # remove 2 dimensionality
-    sl = sl[0]
-    sr = sr[0]
-    if not real_time:
-        sl_out, sr_out = np.transpose(fftconvolve(sl, s)), np.transpose(fftconvolve(sr, s))
-    else:  # taking samples of the signal and overlapping the result (no effect for now)
-        sl_out, sr_out = overlap_add(Nwin, s, sl, sr)
+''' Convolution with dry signal '''
+if audiofileConvolve :
+    speed = len(rotation_sound_field_deg) // 2  # this parameter encodes the speed of the change form one direction to
+    speed *= 2
+
+    if speed:  # moving source
+        sl_out = moving_convolution(sl, s, speed)  # sl is of shape [nb of directions x signal size]
+        sr_out = moving_convolution(sr, s, speed)
+    else:  # static source
+        # remove 2 dimensionality
+        sl = sl[0]
+        sr = sr[0]
+        if not real_time:
+            sl_out, sr_out = np.transpose(fftconvolve(sl, s)), np.transpose(fftconvolve(sr, s))
+        else:  # taking samples of the signal and overlapping the result (no effect for now)
+            sl_out, sr_out = overlap_add(Nwin, s, sl, sr)
 
 ''' Scaling / Amplification '''
 'The max value was calculated according to the highest amplitude in the output of the algorithm, for position 11 of ' \
 'measurements DataEigenmikeDampedRoom10oct.hdf5, ' \
 'it depends on the resampling, usually if we lower the sampling frequency it has to go up'
 
-### For now if using MLS
-# max = np.maximum(np.max(np.abs(sl_out)), np.max(np.abs(sr_out)))
-# print(max)
-
 # ## Regular use of it, measured on the position that leads to the biggest output and sets it (it is also
 # sampling_frequency dependent
+if audiofileConvolve :
+    if fs_min == 32000:
+        max = 0.107  # sampling freq : 32 kHz
+    elif fs_min == 48000:
+        max = 0.209  # sampling freq : 48 kHz
+    else:
+        max = 0.209
+    # needs to be constant to be able to encode the distance (have different gains in different positions)
 
-if fs_min == 32000:
-    max = 0.107  # sampling freq : 32 kHz
-elif fs_min == 48000:
-    max = 0.209  # sampling freq : 48 kHz
-else:
-    max = 0.209
-# needs to be constant to be able to encode the distance (have different gains in different positions)
-
-sl_out, sr_out = sl_out / max, sr_out / max
+    sl_out, sr_out = sl_out / max, sr_out / max
 
 ''' Writing file '''
-
-write('./exports/{0} pos={1} MLS={2} rfi={3} preprocessed={4}.wav'.format(
-    output_file_name,
-    str(position),
-    str(MLS),
-    str(is_apply_rfi),
-    str(loadDRIR)),
-    np.stack((sl_out, sr_out), axis=1), fs_min)
+if audiofileConvolve :
+    write('./exports/{0} pos={1} MLS={2} rfi={3} preprocessed={4}.wav'.format(
+        output_file_name,
+        str(position),
+        str(MLS),
+        str(is_apply_rfi),
+        str(loadDRIR)),
+        np.stack((sl_out, sr_out), axis=1), fs_min)
+    print('Binauralized signal written')
 
 # tac = time.perf_counter()
 # print(tac-tic)
