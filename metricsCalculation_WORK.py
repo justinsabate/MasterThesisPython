@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from code_Utils.MetricsUtils import CLLerror, IC, ITD, ILD
 from code_Utils.SamplingUtils import resample_if_needed
 
-
+''' Loading the signals '''
 # Binaural signal
 signal_name = 'BRIR pos=15 MLS=1 rfi=0 preprocessed=1'  # without file extension, in wavfiles folder
 signal_extension = '.wav'
@@ -17,7 +17,7 @@ ref_name = 'BRIR pos=15 MLS=1 rfi=0 preprocessed=0'  # without file extension, i
 ref_extension = '.wav'
 
 # Type of preprocessing - for plots
-filtertype = 'gain'
+filtertype = 'lowpass'
 title = 'Differences between the Binaural signals with and without preprocessing ('+filtertype+')'
 
 # Length of the signals
@@ -35,6 +35,7 @@ s_ref, fs_ref = load('./exports/BRIR/' + ref_name + ref_extension, sr=None, mono
 fs_min = min(fs_s, fs_ref)
 resample_if_needed(fs_min, fs_ref, s_ref, fs_s, s)
 
+'''Calculation of metrics'''
 # Calculation of CLL error
 NFFT = 2048
 error = CLLerror(s, s_ref, NFFT)  # one value per frequency
@@ -44,19 +45,30 @@ ic_ref = IC(s_ref, fs_min, NFFT)
 ic_s = IC(s, fs_min, NFFT)
 
 # Calculation of ITD
-itd = ITD(s, fs_min, plot=False)
-itd_ref = ITD(s_ref, fs_min, plot=False)
+itd = ITD(s, fs_min, plot=True)
+itd_ref = ITD(s_ref, fs_min, plot=True)
+print('ITD of processed signal: ' + str(itd) + ' sec')
+print('ITD of reference signal: ' + str(itd_ref) + ' sec')
+print('ITD difference: ' + str(itd_ref-itd) + ' sec')
 
 # Calculation of ILD
-fc, ild = ILD(s, fs_min)
-fc, ild_ref = ILD(s_ref, fs_min)
+method_ild = 'gammatone'  # 'gammatone' or 'ERB'
+fc, ild = ILD(s, fs_min, method=method_ild)
+fc, ild_ref = ILD(s_ref, fs_min, method=method_ild)
+# stated average ILD in aper [67], even if weird to do it in dB
+print('Average ILD of processed signal: ' + str(sum(ild)/len(ild)) + ' dB')
+print('Average ILD of reference signal: ' + str(sum(ild_ref)/len(ild_ref)) + ' dB')
+print('Average ILD difference: ' + str(sum(ild)/len(ild)-sum(ild_ref)/len(ild_ref)) + ' dB')
 
-
+'''Plots (remark : itd plot is managed in the function)'''
 # Initializations for plots
 f = np.linspace(0, fs_min//2, NFFT//2+1)
 
-# Plots
+# Figure for CLL and IC
 fig = plt.figure()
+
+# CLL
+
 ax1 = fig.add_subplot(211)
 ax1.plot(f, error, color='#1f77b4')
 ax1.set_xscale('log')
@@ -65,9 +77,7 @@ ax1.set_xscale('log')
 # ax1.set_xlim(20, 0.5 * fs_min)
 ax1.grid(True)
 ax1.set_xlabel('Frequency (Hz)')
-
 ax1.set_ylabel('CLL error (dB)') #, color='#1f77b4') #, fontsize='12'
-
 # ax1.tick_params(axis='y', colors='#1f77b4') #, labelsize='12'
 
 # IC
@@ -83,13 +93,12 @@ ax2.set_xlabel('Frequency (Hz)')
 ax2.set_ylabel('Interaural Coherence') #, fontsize='12'
 # ax2.set_title(title)
 # ax1.tick_params(axis='y', colors='#1f77b4') #, labelsize='12'
-
 fig.suptitle(title)
 plt.legend()
 plt.draw()
 
-
 # ILD
+
 fig = plt.figure()
 ax1 = fig.add_subplot(111)
 ax1.plot(fc, ild, color='#1f77b4', label='processed BRIR')
@@ -102,6 +111,6 @@ ax1.grid(True)
 ax1.set_xlabel('Frequency (Hz)')
 ax1.set_ylabel('ILD (dB)')
 ax1.legend()
-fig.suptitle('ILD comparison')
+fig.suptitle('ILD comparison per frequency band ('+str(method_ild)+' filterbank)')
 plt.show()
 

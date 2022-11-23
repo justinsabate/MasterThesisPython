@@ -13,7 +13,7 @@ from code_Utils.SamplingUtils import resample_if_needed
 '''Code controls'''
 # Plots
 plot1 = 0  # Filter applied to the early reflections
-plot2 = 1  # Early reflections modification process
+plot2 = 0  # Early reflections modification process, careful it can plot 32 plots
 
 # Signal to be convolved
 signal_name = 'BluesA_GitL'  # without file extension, in wavfiles folder
@@ -22,10 +22,10 @@ start_time = 0
 end_time = 10
 
 # Filtering of early reflections
-method = 'gain'  # mini, zero, fir, gain are the different possibilities
-gain = 0.2
+method = 'zero'  # mini, zero, fir, gain are the different possibilities
+gain = 1
 cutoff = 800
-trans_width = 200
+trans_width = 200  # width of the transition of the filter, in case of fir or mini
 filter_type = 'lowpass'
 
 '''If h5py file, need to extract a position and a channel form this'''
@@ -36,7 +36,7 @@ position = 15
 outputFileName = '' + method + '_' + filter_type
 
 # Loading mixing time and indextdirect to avoid recalculating them, have to be calculated for the right position for the tdirect
-loadDRIR_filename = 'DRIRs_processed_pos'+str(position)+'_cut2000_width200_'+filter_type+'.npz'
+loadDRIR_filename = 'DRIRs_processed_pos' + str(position) + '_cut2000_width200_' + filter_type + '.npz'
 load_avgmixtime_indextdirect = 1
 
 '''If plain wav file'''
@@ -46,10 +46,9 @@ load_avgmixtime_indextdirect = 1
 # s1, fs1 = load('./exports/' + file1 + extension, sr=None, mono=True, dtype=np.float32)
 
 
-# todo : test multiple channels
 with h5py.File(measurementFileName, "r") as f:
     measurementgroupkey = list(f.keys())[0]
-    DRIRs = f[measurementgroupkey]['RIRs'][position, :,  # todo: channel replaced by 0:2
+    DRIRs = f[measurementgroupkey]['RIRs'][position, :,
             :]  # RIR, 106 measurements of the 32 channels eigenmike x number of samples
     MetaDatagroupkey = list(f.keys())[1]
     fs_r = f[MetaDatagroupkey].attrs['fs']  # Sampling frequency
@@ -65,7 +64,7 @@ list_tmp50 = []
 list_indexDirect = []
 
 'First loop to get the average mixing time, as it is for one room and to ' \
-    'remove variability across channels + see paper [55] (justins numerotation)'
+'remove variability across channels + see paper [55] (justins numerotation)'
 
 if not load_avgmixtime_indextdirect:
     for channel in range(len(DRIRs)):
@@ -76,7 +75,7 @@ if not load_avgmixtime_indextdirect:
         'Storing values for the second loop'
         list_tmp50.append(tmp50)
         list_indexDirect.append(indexDirect)
-        print('Chanel nb '+str(channel) + ', mixing time : '+str(tmp50) + ' ms')
+        print('Chanel nb ' + str(channel) + ', mixing time : ' + str(tmp50) + ' ms')
 
     avg_mixtime = np.mean(list_tmp50)
 else:
@@ -84,10 +83,9 @@ else:
     avg_mixtime = loaded['avg_mixtime']
     list_indexDirect = loaded['list_indexDirect']
 
-    # avg_mixtime *= 3  # todo: remove it, for now trying to see what happens if we remove more than just the early reflections
+    # avg_mixtime *= 3  # if want to take more than the early reflections, just for testing
 
-
-print('Average mixing time : '+str(avg_mixtime)+' ms')
+print('Average mixing time : ' + str(avg_mixtime) + ' ms')
 
 'Second loop for early reflection processing'
 for channel in range(len(DRIRs)):
@@ -117,6 +115,10 @@ for channel in range(len(DRIRs)):
     refl_extractor = np.concatenate((np.zeros(i_start), win, np.zeros((len(DRIR) - i_end))))
     refl = DRIR * refl_extractor
 
+    # plt.figure
+    # plt.plot(np.unwrap(np.abs(np.fft.rfft(refl))-np.abs(np.fft.rfft(DRIR))))
+    # plt.figure
+    # plt.plot(np.unwrap(np.angle(np.fft.rfft(refl_extractor))))
     'Modification of the reflections'
     refl_plot = np.copy(refl)
 
@@ -136,6 +138,7 @@ for channel in range(len(DRIRs)):
 
     'Plot the modification of the reflections'
     if plot1:
+        plot1 = False  # to run only once this
         'Time representation'
         fig, (ax1, ax2) = plt.subplots(2, 1)
         ax1.plot(t, refl_plot, label='Extracted reflections')
@@ -162,15 +165,21 @@ for channel in range(len(DRIRs)):
         fig = plt.subplots(2, 1)[0]  # because subplots does not return a figure but a tuple with the figure inside
         fig, ax1, ax2 = plot_response(fs_r, 2 * np.pi * f, h1, 'Extracted reflections', fig, subplot=0, unwrap=True)
         ax1.set_ylim(-100, 5)
-        # To study the phase, set unwrap to False to see something and uncomment the next 2 lines
-        # ax2.set_ylim(-5, 5)
-        # ax2.set_xlim(cutoff - trans_width/3, cutoff + trans_width/3)
         fig, ax1, ax2 = plot_response(fs_r, 2 * np.pi * f, h2, 'Modified reflections', fig, subplot=1, unwrap=True)
         ax1.set_ylim(-100, 5)
-        # To study the phase, set unwrap to False to see something and uncomment the next 2 lines
-        # ax2.set_ylim(-5, 5)
-        # ax2.set_xlim(cutoff - trans_width/3, cutoff + trans_width/3)
         fig.suptitle('Early reflections - Frequency representation')
+
+        'Modification of the phase'
+        fig = plt.figure()
+        plt.plot(f * fs_r / 2, np.unwrap(np.angle(h1) - np.angle(h2)), label='phase difference', color='#ff7f0e')
+        plt.grid()
+        plt.xlabel('Frequency (Hz)')
+        plt.xscale('log')
+        plt.xlim((1, fs_r))
+        plt.ylabel('Phase (rad)')
+        plt.legend()
+        plt.title('Early reflections - Modification')
+        plt.draw()
 
     'Extracting the rest'
     rest = DRIR * (1 - refl_extractor)
@@ -225,18 +234,20 @@ for channel in range(len(DRIRs)):
     print('Channel nb ' + str(channel) + ' processed')
 
 'Saving the file as a numpy array'
+
 if method == 'gain':  # default, not using a filter, just applying a gain
-    filename = 'database/DRIRs_processed_'+'pos'+str(position)+'_cut'+str(cutoff)+'_width'+str(trans_width)+'_'+method+'.npz'
+    filename = 'database/DRIRs_processed_' + 'pos' + str(position) + '_cut' + str(
+        cutoff) + '_width' + '_' + method + '.npz'  # +str(trans_width)
 else:  # in case a filter is applied, specify which filter and which method
-    filename = 'database/DRIRs_processed_' + 'pos' + str(position) + '_cut' + str(cutoff) + '_width' + str(
-        trans_width) + '_' + filter_type + '_' + method + '.npz'
+    filename = 'database/DRIRs_processed_' + 'pos' + str(position) + '_cut' + str(
+        cutoff) + '_width' + '_' + filter_type + '_' + method + '.npz'
 
 np.savez_compressed(filename,
                     DRIRs_processed=DRIRs_processed,
                     fs_r=fs_r,
                     avg_mixtime=avg_mixtime,
                     list_indexDirect=list_indexDirect)
-print('saving processed DRIR in the file '+filename)
+print('saving processed DRIR in the file ' + filename)
 
 'To not close the figures'
 plt.show()
@@ -256,7 +267,7 @@ plt.show()
 ### Normalization
 # s_out = s_out/max(np.abs(s_out))
 
-'''To export the processed RIR'''
+'''To export the processed RIR or the convolved signal as a wav file'''
 # sf.write('./exports/{0}.wav'.format(
 #     outputFileName),
 #     s_out,  # recon expected here

@@ -4,8 +4,8 @@ import numpy as np
 
 
 def plot_response(fs, w, h, title, fig=None, subplot=None, unwrap=True):
-    "Utility function to plot response functions"
-    # # plot on separate figures
+    """Utility function to plot response functions"""
+    # # Uncomment to plot on separate figures
     # fig = plt.figure()
     # ax1 = fig.add_subplot(211)
     # ax1.plot(0.5 * fs * w / np.pi, 20 * np.log10(np.abs(h)))

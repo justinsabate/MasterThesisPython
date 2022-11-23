@@ -38,11 +38,11 @@ rotation_sound_field_deg = np.zeros(1)
 rotation_sound_field_deg += offset  # to get it in front for position 7 with offset -23
 
 '''Careful, loadHnm has to be set to 0 in case of changing the methods to obtain the Hnm coefficients'''
-loadHnm = 1  # to load or calculate the Hnm coefficients, getting faster results
+loadHnm = 0  # to load or calculate the Hnm coefficients, getting faster results
 
 '''Loading preprocessed (==modified) DRIR or taking the measured one instead'''
-loadDRIR = 1  # to load preprocessed DRIR obtained with the code ProcessRIR, if 0, not processed DRIR
-loadDRIR_filename = 'DRIRs_processed_pos'+str(position)+'_cut800_width200_gain.npz'
+loadDRIR = 0  # to load preprocessed DRIR obtained with the code ProcessRIR, if 0, not processed DRIR
+loadDRIR_filename = 'DRIRs_processed_pos'+str(position)+'_cut800_width200_lowpass_zero.npz'
 
 '''Exporting BRIR for metrics calculation'''
 exportBRIR = 1
@@ -142,6 +142,7 @@ fs_min = min([fs_r, fs_h, fs_s, sampling_frequency])
 #         mini = temp
 #         indice = i
 # print(mini, indice)
+
 'position 9 starts the earliest, around index = 6656'
 
 ### same sampling frequency
@@ -292,10 +293,6 @@ c = 343
 kr = 2 * np.pi * freq * r / c
 nm_size = np.shape(Pnm)[0]
 
-### dn is actually the inverse of the output of the weight function here a refinement is made to avoid very high
-# values due to weight close to zero
-
-
 config = ArrayConfiguration(
     array_radius=0.085,
     array_type='rigid',
@@ -330,7 +327,7 @@ if eq:
         NFFT=NFFT,
         fs=fs_min,
         radius=r,
-        is_tapering=tapering_win,
+        is_tapering=False,  # otherwise it is done twice
     )
 
     dn_shf_delay_samples = NFFT / 2
