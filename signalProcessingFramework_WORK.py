@@ -21,31 +21,38 @@ from code_plots.plots_functions import plot_HRTF_refinement, plot_radial, plot_f
 N = 4 # maximum with the em32 eigenmike
 
 '''Selection of the measurements'''
-measurementFileName = 'database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
+room = 'reverberant' #'dry' or 'reverberant'
 
+if room == 'dry':
+    measurementFileName = 'database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
+else:
+    # measurementFileName = '/Volumes/Transcend/DTU/Thesis/measurements_novdatacode/EigenmikeRecord/CleanedDataset/DataEigenmike_MeetingRoom_25nov_cleaned.hdf5' # full file with reference too
+    measurementFileName = '/Volumes/Transcend/DTU/Thesis/measurements_novdatacode/EigenmikeRecord/CleanedDataset/DataEigenmike_MeetingRoom_25nov_justin_cleaned.hdf5' #truncated file without ref
 
 signal_name = 'BluesA_GitL'  # without file extension, in wavfiles folder
 extension = '.wav'
 start_time = 0
 end_time = 90
 
-position = 15  # position of the measurement that is being used, position 7 => -23° azimuth
+position = 0  # position of the measurement that is being used, (position 7 => -23° azimuth for dry environment)
 
 '''Rotation and head positionning : rotation around the listener if multiple values in rotation_sound_field_deg'''
-offset = 0  # -23  # to position one specific measurement in front if head tracking exportation wanted
+offset = 120  # -23  # to position one specific measurement in front if head tracking exportation wanted
 # rotation_sound_field_deg = np.arange(-360, 361, 10) #np.arange(-90, 91, 5)
 rotation_sound_field_deg = np.zeros(1)
 rotation_sound_field_deg += offset  # to get it in front for position 7 with offset -23
 
 '''Careful, loadHnm has to be set to 0 in case of changing the methods to obtain the Hnm coefficients'''
-loadHnm = 0  # to load or calculate the Hnm coefficients, getting faster results
+loadHnm = 1  # to load or calculate the Hnm coefficients, getting faster results
 
 '''Loading preprocessed (==modified) DRIR or taking the measured one instead'''
-loadDRIR = 0  # to load preprocessed DRIR obtained with the code ProcessRIR, if 0, not processed DRIR
-loadDRIR_filename = 'DRIRs_processed_pos'+str(position)+'_cut800_width200_lowpass_zero.npz'
+processedDRIR = 1  # to load preprocessed DRIR obtained with the code ProcessRIR, if 0, not processed DRIR
+# processedDRIR_filename = 'DRIRs_processed_'+room+'_pos'+str(position)+'_cut800_lowpass_zero.npz'
+processedDRIR_filename = 'DRIRs_processed_'+room+'_pos'+str(position)+'_gain.npz'
+
 
 '''Exporting BRIR for metrics calculation'''
-exportBRIR = 1
+exportBRIR = 0
 
 '''Convolving with the dry signal to write the wav binauralization'''
 audiofileConvolve = 1
@@ -87,22 +94,46 @@ if np.size(rotation_sound_field_deg) > 1:
 # Be sure they are the same type (float32 for ex)
 
 ### Measurement data
-if not loadDRIR:
+#
+# positions = [0,1,2,3]
+# plt.figure()
+
+# for position in positions:
+if not processedDRIR:
     print('Loading measured (non modified) DRIR')
     with File(measurementFileName, "r") as f:
         measurementgroupkey = list(f.keys())[0]
+
         DRIR = f[measurementgroupkey]['RIRs'][position, :,
                :]  # RIR, 106 measurements of the 32 positions eigenmike x number of samples
+        # REFs = f[measurementgroupkey]['REFs'][position]
+
         MetaDatagroupkey = list(f.keys())[1]
         fs_r = f[MetaDatagroupkey].attrs['fs']  # Sampling frequency
         # NFFT = np.shape(DRIR)[-1] # too big
         f.close()
 else:
     print('Loading modified DRIR')
-    loaded = np.load('database/'+loadDRIR_filename)
+    loaded = np.load('database/'+processedDRIR_filename)
     DRIR = loaded['DRIRs_processed']
     fs_r = loaded['fs_r']
-    # avg_mixtime = loaded['avg_mixtime']
+    avg_mixtime = loaded['avg_mixtime']
+    #
+    # # ### work in progress some plots todo:remove it
+    # #
+    #     # for i in range(0, np.shape(DRIR)[0]):
+#     #     #     plt.plot(DRIR[i])
+# plt.plot(REFs[0])
+# plt.plot(DRIR[0])
+#
+# #
+# plt.draw()
+
+
+# maxiref = np.argmax(REFs)
+# maxirir = np.argmax(DRIR[2])
+
+### end of work in progress
 
 grid = get_eigenmike_grid(plot=False)
 plot_grid(grid, grid_plot)
@@ -132,7 +163,7 @@ if len(np.shape(s)) > 1:
     # s = s[1]
 
 fs_min = min([fs_r, fs_h, fs_s, sampling_frequency])
-
+print('Sampling frequency :'+str(fs_min)+' Hz')
 ### finding the IR that starts the earliest
 # indice = 0
 # mini = np.min([index for index, item in enumerate(DRIR[0]) if item > 0.001])
@@ -150,10 +181,23 @@ fs_min = min([fs_r, fs_h, fs_s, sampling_frequency])
 DRIR, s, HRIR_l_signal, HRIR_r_signal = resample_if_needed(fs_min, fs_r, DRIR, fs_s, s, fs_h, HRIR_l_signal,
                                                            HRIR_r_signal)
 
+### Choosing NFFT, important parameter because it truncates the frequency responses so the room response
+NFFT = 4096*4 # todo: changed from 4096
+print('Nfft=' + str(NFFT))
+
 ### Taking 50ms/100ms of the RIR signal
+# for damped room with NFFT = 4096 and fs = 32000
 # tries : 6000 vs 6600 for the first index of the RIR (before resampling)
 nstart = int(6400 / fs_h * fs_min)
 nend = int(nstart + 0.1 * fs_min)
+
+# for meeting room 2
+# for fs = 32000
+nstart = 2000
+nend = nstart+NFFT
+# for fs = 48000
+# nstart = 3500
+# nend = 3500+NFFT
 
 DRIR = DRIR[:, nstart:nend]
 
@@ -162,9 +206,7 @@ if DRIR_plot:
     plt.plot(DRIR[9])
     plt.show()
 
-### Choosing NFFT, important parameter
-NFFT = 4096
-print('Nfft=' + str(NFFT))
+
 
 ### abcissa for plots
 freq = np.arange(0, NFFT // 2 + 1) * (fs_min / NFFT)
@@ -407,7 +449,7 @@ if exportBRIR:
         str(position),
         str(MLS),
         str(is_apply_rfi),
-        str(loadDRIR)),
+        str(processedDRIR)),
         np.stack((sl[0], sr[0]), axis=1), fs_min)
     print('BRIR file written')
 
@@ -437,7 +479,10 @@ if audiofileConvolve :
 # sampling_frequency dependent
 if audiofileConvolve :
     if fs_min == 32000:
-        max = 0.107  # sampling freq : 32 kHz
+        max = 0.107  # sampling freq : 32 kHz and damped room and NNFT 4096
+        # max = 0.01# sampling freq : 32kHz and Meeting room 2 and NFFT 2*4096
+        # max = 0.05
+        # max = 0.0001  # sampling freq : 48kHz and Meeting room 2 and NFFT 4*4096
     elif fs_min == 48000:
         max = 0.209  # sampling freq : 48 kHz
     else:
@@ -453,7 +498,7 @@ if audiofileConvolve :
         str(position),
         str(MLS),
         str(is_apply_rfi),
-        str(loadDRIR)),
+        str(processedDRIR)),
         np.stack((sl_out, sr_out), axis=1), fs_min)
     print('Binauralized signal written')
 

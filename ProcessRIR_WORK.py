@@ -13,7 +13,7 @@ from code_Utils.SamplingUtils import resample_if_needed
 '''Code controls'''
 # Plots
 plot1 = 0  # Filter applied to the early reflections
-plot2 = 0  # Early reflections modification process, careful it can plot 32 plots
+plot2 = 1  # Early reflections modification process, careful it can plot 32 plots
 
 # Signal to be convolved
 signal_name = 'BluesA_GitL'  # without file extension, in wavfiles folder
@@ -22,22 +22,29 @@ start_time = 0
 end_time = 10
 
 # Filtering of early reflections
-method = 'zero'  # mini, zero, fir, gain are the different possibilities
-gain = 1
-cutoff = 800
+method = 'gain'  # mini, zero, fir, gain are the different possibilities
+gain = 0
+cutoff = 500
 trans_width = 200  # width of the transition of the filter, in case of fir or mini
-filter_type = 'lowpass'
+filter_type = 'gain'
 
 '''If h5py file, need to extract a position and a channel form this'''
-measurementFileName = './database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
-position = 15
+room = 'reverberant' #'dry' or 'reverberant'
+
+if room == 'dry':
+    measurementFileName = './database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
+else:
+    measurementFileName = '/Volumes/Transcend/DTU/Thesis/measurements_novdatacode/EigenmikeRecord/CleanedDataset/DataEigenmike_MeetingRoom_25nov_justin_cleaned.hdf5' #truncated file without ref
+
+position = 0
+
 # channel = 9
 # outputFileName for convolved signal in case it is needed
 outputFileName = '' + method + '_' + filter_type
 
 # Loading mixing time and indextdirect to avoid recalculating them, have to be calculated for the right position for the tdirect
-loadDRIR_filename = 'DRIRs_processed_pos' + str(position) + '_cut2000_width200_' + filter_type + '.npz'
 load_avgmixtime_indextdirect = 1
+loadDRIR_filename = 'mixtime_'+str(room)+'_pos'+str(position)+'.npz'
 
 '''If plain wav file'''
 # file1 = 'BluesA_GitL zeros in the beginning rot=0 pos=11 limiting=18NFFT=4096 realtime=0 HRTFmodif=1 Tapering=1 EQ=1'
@@ -83,7 +90,7 @@ else:
     avg_mixtime = loaded['avg_mixtime']
     list_indexDirect = loaded['list_indexDirect']
 
-    # avg_mixtime *= 3  # if want to take more than the early reflections, just for testing
+    # avg_mixtime /= 3  # if want to take more than the early reflections, just for testing
 
 print('Average mixing time : ' + str(avg_mixtime) + ' ms')
 
@@ -189,27 +196,33 @@ for channel in range(len(DRIRs)):
 
     '''Plot the window on the signal waveform'''
     if plot2:
+        plot2 = 0 # only one plot
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+        bar_width = 0.01
         ax1.plot(t, DRIR, label='Original RIR')
+        # ax1.set_xticks(list(ax1.get_xticks()) + [float(str(tDirect)[0:4]), float(str(tmp50_plot)[0:4])])
 
         ax11 = ax1.twiny()
+
         ax11.bar(tDirect,
                  height=2 * np.max(abs(DRIR)),
-                 width=0.002,
+                 width=bar_width,  # 0.002 with the xlim of code line 235
                  tick_label='Direct sound: ' + str(tDirect)[0:5] + 'sec',
                  bottom=-np.max(abs(DRIR)),
                  color='red')
-        ax11.tick_params(axis='x', colors='red', rotation=10)
+        ax11.tick_params(axis='x', colors='red', rotation=20)
+
+
 
         ax12 = ax1.twiny()
         ax12.bar(tmp50_plot,
                  height=2 * np.max(abs(DRIR)),
-                 width=0.002,
+                 width=bar_width,  # 0.002 with the xlim of code line 235
                  tick_label='tmp50: ' + str(tmp50_plot)[0:5] + 'sec',
                  bottom=-np.max(abs(DRIR)),
                  color='green'
                  )
-        ax12.tick_params(axis='x', colors='green', rotation=10)
+        ax12.tick_params(axis='x', colors='green', rotation=20)
 
         ax2.plot(t, refl_plot, label='extracted reflections')
         ax2.plot(t, rest, label='remaining RIR')
@@ -224,8 +237,10 @@ for channel in range(len(DRIRs)):
                 ax.set_xlabel('Time(s)')
                 ax.set_ylabel('Amplitude')
                 ax.legend()
+
             ax.grid()
-            ax.set_xlim((0.1, 0.3))
+            ax.set_xlim((0, 1))
+            # ax.set_xlim((0.1, 0.3))
         plt.draw()
 
     'Storing in the global variable'
@@ -236,17 +251,22 @@ for channel in range(len(DRIRs)):
 'Saving the file as a numpy array'
 
 if method == 'gain':  # default, not using a filter, just applying a gain
-    filename = 'database/DRIRs_processed_' + 'pos' + str(position) + '_cut' + str(
-        cutoff) + '_width' + '_' + method + '.npz'  # +str(trans_width)
+    filename = 'database/DRIRs_processed_'+ room + '_pos' + str(position) + '_' + method + '.npz'  # +str(trans_width)
 else:  # in case a filter is applied, specify which filter and which method
-    filename = 'database/DRIRs_processed_' + 'pos' + str(position) + '_cut' + str(
-        cutoff) + '_width' + '_' + filter_type + '_' + method + '.npz'
+    filename = 'database/DRIRs_processed_' + room +'_pos' + str(position) + '_cut' + str(
+        cutoff)  + '_' + filter_type + '_' + method + '.npz'
 
 np.savez_compressed(filename,
                     DRIRs_processed=DRIRs_processed,
                     fs_r=fs_r,
                     avg_mixtime=avg_mixtime,
                     list_indexDirect=list_indexDirect)
+
+np.savez_compressed('database/mixtime_'+str(room)+'_pos'+str(position)+'.npz',
+                    fs_r=fs_r,
+                    avg_mixtime=avg_mixtime,
+                    list_indexDirect=list_indexDirect)
+
 print('saving processed DRIR in the file ' + filename)
 
 'To not close the figures'
