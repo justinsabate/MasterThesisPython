@@ -21,6 +21,7 @@ from code_plots.plots_functions import plot_HRTF_refinement, plot_radial, plot_f
 N = 4 # maximum with the em32 eigenmike
 
 '''Selection of the measurements'''
+
 room = 'reverberant' #'dry' or 'reverberant'
 
 if room == 'dry':
@@ -29,15 +30,26 @@ else:
     # measurementFileName = '/Volumes/Transcend/DTU/Thesis/measurements_novdatacode/EigenmikeRecord/CleanedDataset/DataEigenmike_MeetingRoom_25nov_cleaned.hdf5' # full file with reference too
     measurementFileName = '/Volumes/Transcend/DTU/Thesis/measurements_novdatacode/EigenmikeRecord/CleanedDataset/DataEigenmike_MeetingRoom_25nov_justin_cleaned.hdf5' #truncated file without ref
 
-signal_name = 'BluesA_GitL'  # without file extension, in wavfiles folder
+signal_name = 'DontMeanAthin_all'  # without file extension, in wavfiles folder
 extension = '.wav'
 start_time = 0
 end_time = 90
 
-position = 0  # position of the measurement that is being used, (position 7 => -23° azimuth for dry environment)
+# dry :
+#   close = position 10; GOOD
+#   middle = position 9; GOOD
+#   far  = position 7; BAD (low frequency boost, close to the closet in the room)
+# reverberant :
+#   close = position 6; GOOD
+#   middle = position 3; (GOOD but in between)
+#   far = position 0; GOOD
 
-'''Rotation and head positionning : rotation around the listener if multiple values in rotation_sound_field_deg'''
-offset = 120  # -23  # to position one specific measurement in front if head tracking exportation wanted
+position = 6  # position of the measurement that is being used, (position 7 => -23° azimuth for dry environment)
+# mixing time increase
+increase_factor_window = 1
+
+'''Rotation and head positioning : rotation around the listener if multiple values in rotation_sound_field_deg'''
+offset = 0  # -23  # to position one specific measurement in front
 # rotation_sound_field_deg = np.arange(-360, 361, 10) #np.arange(-90, 91, 5)
 rotation_sound_field_deg = np.zeros(1)
 rotation_sound_field_deg += offset  # to get it in front for position 7 with offset -23
@@ -47,8 +59,12 @@ loadHnm = 1  # to load or calculate the Hnm coefficients, getting faster results
 
 '''Loading preprocessed (==modified) DRIR or taking the measured one instead'''
 processedDRIR = 1  # to load preprocessed DRIR obtained with the code ProcessRIR, if 0, not processed DRIR
-# processedDRIR_filename = 'DRIRs_processed_'+room+'_pos'+str(position)+'_cut800_lowpass_zero.npz'
-processedDRIR_filename = 'DRIRs_processed_'+room+'_pos'+str(position)+'_gain.npz'
+filtertype = 'lowpass'  # gain lowpass or highpass depending on the files generated in ProcessRIR
+cutoff = 2000
+if filtertype == 'gain':
+    processedDRIR_filename = 'DRIRs_processed_' + room + '_pos' + str(position) + '_gain_mix*' + str(increase_factor_window) + '.npz'
+else:
+    processedDRIR_filename = 'DRIRs_processed_'+room+'_pos'+str(position)+'_cut'+str(cutoff)+'_'+filtertype+'_zero.npz'
 
 
 '''Exporting BRIR for metrics calculation'''
@@ -185,15 +201,18 @@ DRIR, s, HRIR_l_signal, HRIR_r_signal = resample_if_needed(fs_min, fs_r, DRIR, f
 NFFT = 4096*4 # todo: changed from 4096
 print('Nfft=' + str(NFFT))
 
-### Taking 50ms/100ms of the RIR signal
+### Taking NFFT/fs_min sec of the RIR signal
 # for damped room with NFFT = 4096 and fs = 32000
-# tries : 6000 vs 6600 for the first index of the RIR (before resampling)
-nstart = int(6400 / fs_h * fs_min)
-nend = int(nstart + 0.1 * fs_min)
+# first index to be sure to have the response, depends on the measurements mostly, ideally would not have to change nstart = 0
+if room == 'dry':
+    nstart = int(6400 / fs_h * fs_min)
+# nend = int(nstart + 0.1 * fs_min)
 
 # for meeting room 2
 # for fs = 32000
-nstart = 2000
+if room == 'reverberant':
+    nstart = 0
+
 nend = nstart+NFFT
 # for fs = 48000
 # nstart = 3500
@@ -444,12 +463,12 @@ sl, sr = np.fft.irfft(Sl, NFFT), np.fft.irfft(Sr, NFFT)
 'Export of BRIR for metric calculation'
 if exportBRIR:
     BRIR_filename = 'BRIR'
-    write('./exports/BRIR/{0} pos={1} MLS={2} rfi={3} preprocessed={4}.wav'.format(
+    write('./exports/BRIR/{0} pos={1} preprocessed={2} room={3} mix*{4}.wav'.format(
         BRIR_filename,
         str(position),
-        str(MLS),
-        str(is_apply_rfi),
-        str(processedDRIR)),
+        str(processedDRIR),
+        room,
+        str(increase_factor_window)),
         np.stack((sl[0], sr[0]), axis=1), fs_min)
     print('BRIR file written')
 
@@ -493,12 +512,13 @@ if audiofileConvolve :
 
 ''' Writing file '''
 if audiofileConvolve :
-    write('./exports/{0} pos={1} MLS={2} rfi={3} preprocessed={4}.wav'.format(
+    write('./exports/{0} pos={1} preprocessed={2} room={3} {4} {5}.wav'.format(
         output_file_name,
         str(position),
-        str(MLS),
-        str(is_apply_rfi),
-        str(processedDRIR)),
+        str(processedDRIR),
+        room,
+        filtertype,
+        str(cutoff)),
         np.stack((sl_out, sr_out), axis=1), fs_min)
     print('Binauralized signal written')
 

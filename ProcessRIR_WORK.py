@@ -22,21 +22,31 @@ start_time = 0
 end_time = 10
 
 # Filtering of early reflections
-method = 'gain'  # mini, zero, fir, gain are the different possibilities
+method = 'zero'  # mini, zero, fir, gain are the different possibilities
 gain = 0
-cutoff = 500
+cutoff = 2000
 trans_width = 200  # width of the transition of the filter, in case of fir or mini
-filter_type = 'gain'
+filter_type = 'highpass'
 
 '''If h5py file, need to extract a position and a channel form this'''
-room = 'reverberant' #'dry' or 'reverberant'
+
+room = 'reverberant'  #'dry' or 'reverberant'
 
 if room == 'dry':
     measurementFileName = './database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
 else:
     measurementFileName = '/Volumes/Transcend/DTU/Thesis/measurements_novdatacode/EigenmikeRecord/CleanedDataset/DataEigenmike_MeetingRoom_25nov_justin_cleaned.hdf5' #truncated file without ref
 
-position = 0
+# dry :
+#   close = position 10; GOOD
+#   middle = position 9; GOOD
+#   far  = position 7; BAD (low frequency boost, close to the closet in the room)
+# reverberant :
+#   close = position 6; GOOD
+#   middle = position 3; (GOOD but in between)
+#   far = position 0; GOOD
+position = 6  # loudspeaker changing positions 0done,3done,6done in the reverberant room, in the dry room positions 7done,9done,10done have the same characteristics
+increase_factor_window = 1
 
 # channel = 9
 # outputFileName for convolved signal in case it is needed
@@ -45,7 +55,7 @@ outputFileName = '' + method + '_' + filter_type
 # Loading mixing time and indextdirect to avoid recalculating them, have to be calculated for the right position for the tdirect
 load_avgmixtime_indextdirect = 1
 loadDRIR_filename = 'mixtime_'+str(room)+'_pos'+str(position)+'.npz'
-
+# loadDRIR_filename = 'DRIRs_processed_pos15_cut800_width200_lowpass_zero.npz'
 '''If plain wav file'''
 # file1 = 'BluesA_GitL zeros in the beginning rot=0 pos=11 limiting=18NFFT=4096 realtime=0 HRTFmodif=1 Tapering=1 EQ=1'
 # extension = '.wav'
@@ -68,6 +78,8 @@ t = np.arange(0, len(DRIRs[0])) / fs_r
 'Initialization'
 DRIRs_processed = np.copy(DRIRs)
 list_tmp50 = []
+list_tmp95 = []
+list_t_abel = []
 list_indexDirect = []
 
 'First loop to get the average mixing time, as it is for one room and to ' \
@@ -77,14 +89,17 @@ if not load_avgmixtime_indextdirect:
     for channel in range(len(DRIRs)):
         'Calculating mixing time'
         DRIR = DRIRs[channel]
-        tmp50, indexDirect = np.array(data_based(np.transpose(DRIR), fs_r), dtype=object)[
-            [0, 5]]  # double brackets to extract 2 values out of the function outputs
+        tmp50, indexDirect, tmp95, t_abel = np.array(data_based(np.transpose(DRIR), fs_r), dtype=object)[
+            [0, 5, 1, 6]]  # double brackets to extract 2 values out of the function outputs
         'Storing values for the second loop'
         list_tmp50.append(tmp50)
         list_indexDirect.append(indexDirect)
-        print('Chanel nb ' + str(channel) + ', mixing time : ' + str(tmp50) + ' ms')
+        list_tmp95.append(tmp95)
+        list_t_abel.append(t_abel)
 
-    avg_mixtime = np.mean(list_tmp50)
+        print('Chanel nb ' + str(channel) + ', mixing time : ' + str(tmp50) + ' ms, tmp95=' + str(tmp95) + ' ms, t_abel=' + str(t_abel) + ' ms')
+
+    avg_mixtime = np.mean(list_tmp95)
 else:
     loaded = np.load('database/' + loadDRIR_filename)
     avg_mixtime = loaded['avg_mixtime']
@@ -93,24 +108,25 @@ else:
     # avg_mixtime /= 3  # if want to take more than the early reflections, just for testing
 
 print('Average mixing time : ' + str(avg_mixtime) + ' ms')
+print('Window length used : ' + str(avg_mixtime*increase_factor_window) + ' ms')
 
 'Second loop for early reflection processing'
 for channel in range(len(DRIRs)):
 
     '''Getting stored values'''
     DRIR = DRIRs[channel]
-    tmp50 = avg_mixtime
+    tmp95 = avg_mixtime * increase_factor_window  # todo: important  value, to change the size of the window
     indexDirect = list_indexDirect[channel]
 
     tDirect = indexDirect / fs_r
-    tmp50_plot = tmp50 * 0.001 + tDirect
+    tmp95_plot = tmp95 * 0.001 + tDirect
 
     # i_center = 7700
     # i_start = i_center-Nwin//2
     # i_end = i_center+Nwin//2
 
     i_start = indexDirect
-    i_end = int(tmp50_plot * fs_r)
+    i_end = int(tmp95_plot * fs_r)
 
     '''Create the window'''
     lenWin = i_end - i_start
@@ -153,8 +169,8 @@ for channel in range(len(DRIRs)):
         ax1.set_xlabel('Time(s)')
         ax1.set_ylabel('Amplitude')
         ax1.legend()
-        delta_t = (tmp50_plot - tDirect) / 4
-        ax1.set_xlim(tDirect - delta_t, tmp50_plot + delta_t)
+        delta_t = (tmp95_plot - tDirect) / 4
+        ax1.set_xlim(tDirect - delta_t, tmp95_plot + delta_t)
 
         ax2.plot(t, refl, label='Modified reflections', color='#ff7f0e')
         ax2.grid()
@@ -215,10 +231,10 @@ for channel in range(len(DRIRs)):
 
 
         ax12 = ax1.twiny()
-        ax12.bar(tmp50_plot,
+        ax12.bar(tmp95_plot,
                  height=2 * np.max(abs(DRIR)),
                  width=bar_width,  # 0.002 with the xlim of code line 235
-                 tick_label='tmp50: ' + str(tmp50_plot)[0:5] + 'sec',
+                 tick_label='tmp95: ' + str(tmp95_plot)[0:5] + 'sec',
                  bottom=-np.max(abs(DRIR)),
                  color='green'
                  )
@@ -251,7 +267,7 @@ for channel in range(len(DRIRs)):
 'Saving the file as a numpy array'
 
 if method == 'gain':  # default, not using a filter, just applying a gain
-    filename = 'database/DRIRs_processed_'+ room + '_pos' + str(position) + '_' + method + '.npz'  # +str(trans_width)
+    filename = 'database/DRIRs_processed_'+ room + '_pos' + str(position) + '_' + method + '_mix*' + str(increase_factor_window) + '.npz'  # +str(trans_width)
 else:  # in case a filter is applied, specify which filter and which method
     filename = 'database/DRIRs_processed_' + room +'_pos' + str(position) + '_cut' + str(
         cutoff)  + '_' + filter_type + '_' + method + '.npz'

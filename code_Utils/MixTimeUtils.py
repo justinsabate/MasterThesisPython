@@ -43,7 +43,7 @@ def data_based(IR, fs):
     if sum(tmp95 < 0):
         idx = np.where(tmp95 < 0)
         for g in range(0, len(idx)):
-            tmp50[idx[g]] = 1
+            tmp95[idx[g]] = 1
 
     # average perceptual mixing time over all channels
     if nb_channel > 1:
@@ -54,7 +54,7 @@ def data_based(IR, fs):
         tmp50_interchannel_mean = []
         tmp95_interchannel_mean = []
 
-    return tmp50, tmp95, tmp50_interchannel_mean, tmp95_interchannel_mean, echo_dens, index_direct
+    return tmp50, tmp95, tmp50_interchannel_mean, tmp95_interchannel_mean, echo_dens, index_direct, t_abel
 
 
 def abel(IR, N, fs, peak_secure_margin):
