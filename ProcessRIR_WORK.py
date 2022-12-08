@@ -22,7 +22,7 @@ start_time = 0
 end_time = 10
 
 # Filtering of early reflections
-method = 'threshold'  # mini, zero, fir, gain, threshold are the different possibilities
+method = 'gain'  # mini, zero, fir, gain, threshold are the different possibilities
 gain = 0
 cutoff = 2000
 trans_width = 200  # width of the transition of the filter, in case of fir or mini
@@ -30,7 +30,7 @@ filter_type = 'lowpass'
 
 '''If h5py file, need to extract a position and a channel form this'''
 
-room = 'dry'  #'dry' or 'reverberant'
+room = 'reverberant'  #'dry' or 'reverberant'
 
 if room == 'dry':
     measurementFileName = './database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
@@ -45,7 +45,7 @@ else:
 #   close = position 6; GOOD : ABEL mixing time
 #   middle = position 3; (GOOD but in between)
 #   far = position 0; GOOD : ABEL
-position = 9  # loudspeaker changing positions 0done,3done,6done in the reverberant room, in the dry room positions 7done,9done,10done have the same characteristics
+position = 6  # loudspeaker changing positions 0done,3done,6done in the reverberant room, in the dry room positions 7done,9done,10done have the same characteristics
 increase_factor_window = 1  # parameter to  increase the size of the window extracting early reflections
 
 # channel = 9
@@ -53,7 +53,7 @@ increase_factor_window = 1  # parameter to  increase the size of the window extr
 outputFileName = '' + method + '_' + filter_type
 
 # Loading mixing time and indextdirect to avoid recalculating them, have to be calculated for the right position for the tdirect
-load_avgmixtime_indextdirect = 0
+load_avgmixtime_indextdirect = 1
 loadDRIR_filename = 'mixtime_'+str(room)+'_pos'+str(position)+'.npz'
 # loadDRIR_filename = 'DRIRs_processed_pos15_cut800_width200_lowpass_zero.npz'
 '''If plain wav file'''

@@ -13,8 +13,45 @@ pages:
     - type: generic
       id: first_page
       name: Welcome
-      content: Introduction, training and then experiment, volume high enough
+      content: Introduction, training and then experiment, volume high enough and not change it
 
+    - type: generic
+      id: training
+      name: Training
+      content: Introduction, training and then experiment, volume high enough. Think about externalization, room impression, coloration of the signal
+    - type: mushra
+      id: training speech
+      name: Training trial 1/2
+      content: Compare the different conditions to the reference and rate how similar they are.
+      showWaveform: true
+      enableLooping: true
+      reference: configs/resources/audio/training/The Emperor (danish) pos=10 preprocessed=0 room=dry  .wav
+      createAnchor35: false
+      createAnchor70: false
+      randomize: false
+      showConditionNames: true
+      stimuli:
+          Processing 1: configs/resources/audio/training/The Emperor (danish) pos=10 preprocessed=1 room=dry gain 2000.wav
+          Processing 2: configs/resources/audio/training/The Emperor (danish).wav
+
+    - type: mushra
+      id: training music
+      name: Training trial 2/2
+      content: Compare the different conditions to the reference and rate how similar they are.
+      showWaveform: true
+      enableLooping: true
+      reference: configs/resources/audio/training/Reinhardt_all pos=6 preprocessed=0 room=reverberant  .wav
+      createAnchor35: false
+      createAnchor70: false
+      randomize: false
+      showConditionNames: true
+      stimuli:
+          Processing 1: configs/resources/audio/training/Reinhardt_all pos=6 preprocessed=1 room=reverberant gain 2000.wav
+          Processing 2: configs/resources/audio/training/Reinhardt_all.wav
+
+    - type: generic
+      id: testintro
+      content: Now the real test
     -
      - random
      -

@@ -22,7 +22,7 @@ N = 4 # maximum with the em32 eigenmike
 
 '''Selection of the measurements'''
 
-room = 'dry' #'dry' or 'reverberant'
+room = 'reverberant' #'dry' or 'reverberant'
 
 if room == 'dry':
     measurementFileName = 'database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
@@ -31,10 +31,12 @@ else:
     measurementFileName = '/Volumes/Transcend/DTU/Thesis/measurements_novdatacode/EigenmikeRecord/CleanedDataset/DataEigenmike_MeetingRoom_25nov_justin_cleaned.hdf5' #truncated file without ref
 
 # signal_name = 'DontMeanAthin_all'  # without file extension, in wavfiles folder
-signal_name = 'Frequency (english)'
+# signal_name = 'Frequency (english)'
+# signal_name = 'Reinhardt_all'
+signal_name = 'The Emperor (danish)'
 extension = '.wav'
-start_time = 0
-end_time = 10
+start_time = 1.06
+end_time = 9.87
 
 # dry :
 #   close = position 10; GOOD
@@ -45,7 +47,7 @@ end_time = 10
 #   middle = position 3; (GOOD but in between)
 #   far = position 0; GOOD
 
-position = 10  # position of the measurement that is being used, (position 7 => -23° azimuth for dry environment)
+position = 6  # position of the measurement that is being used, (position 7 => -23° azimuth for dry environment)
 # mixing time increase
 increase_factor_window = 1
 
@@ -59,7 +61,7 @@ rotation_sound_field_deg += offset  # to get it in front for position 7 with off
 loadHnm = 1  # to load or calculate the Hnm coefficients, getting faster results
 
 '''Loading preprocessed (==modified) DRIR or taking the measured one instead'''
-processedDRIR = 0  # to load preprocessed DRIR obtained with the code ProcessRIR, if 0, not processed DRIR
+processedDRIR = 1  # to load preprocessed DRIR obtained with the code ProcessRIR, if 0, not processed DRIR
 filtertype = 'gain'  # gain, lowpass, highpass of threshold depending on the files generated in ProcessRIR
 cutoff = 2000
 if filtertype == 'gain':
@@ -208,7 +210,7 @@ print('Nfft=' + str(NFFT))
 # for damped room with NFFT = 4096 and fs = 32000
 # first index to be sure to have the response, depends on the measurements mostly, ideally would not have to change nstart = 0
 if room == 'dry':
-    nstart = int(6400 / fs_h * fs_min)
+    nstart = int(6400 / fs_r * fs_min)
 # nend = int(nstart + 0.1 * fs_min)
 
 # for meeting room 2
