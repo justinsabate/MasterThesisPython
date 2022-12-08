@@ -22,7 +22,7 @@ N = 4 # maximum with the em32 eigenmike
 
 '''Selection of the measurements'''
 
-room = 'reverberant' #'dry' or 'reverberant'
+room = 'dry' #'dry' or 'reverberant'
 
 if room == 'dry':
     measurementFileName = 'database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
@@ -30,7 +30,8 @@ else:
     # measurementFileName = '/Volumes/Transcend/DTU/Thesis/measurements_novdatacode/EigenmikeRecord/CleanedDataset/DataEigenmike_MeetingRoom_25nov_cleaned.hdf5' # full file with reference too
     measurementFileName = '/Volumes/Transcend/DTU/Thesis/measurements_novdatacode/EigenmikeRecord/CleanedDataset/DataEigenmike_MeetingRoom_25nov_justin_cleaned.hdf5' #truncated file without ref
 
-signal_name = 'DontMeanAthin_all'  # without file extension, in wavfiles folder
+# signal_name = 'DontMeanAthin_all'  # without file extension, in wavfiles folder
+signal_name = 'Frequency (english)'
 extension = '.wav'
 start_time = 0
 end_time = 90
@@ -44,7 +45,7 @@ end_time = 90
 #   middle = position 3; (GOOD but in between)
 #   far = position 0; GOOD
 
-position = 6  # position of the measurement that is being used, (position 7 => -23° azimuth for dry environment)
+position = 10  # position of the measurement that is being used, (position 7 => -23° azimuth for dry environment)
 # mixing time increase
 increase_factor_window = 1
 
@@ -58,11 +59,13 @@ rotation_sound_field_deg += offset  # to get it in front for position 7 with off
 loadHnm = 1  # to load or calculate the Hnm coefficients, getting faster results
 
 '''Loading preprocessed (==modified) DRIR or taking the measured one instead'''
-processedDRIR = 1  # to load preprocessed DRIR obtained with the code ProcessRIR, if 0, not processed DRIR
-filtertype = 'lowpass'  # gain lowpass or highpass depending on the files generated in ProcessRIR
+processedDRIR = 0  # to load preprocessed DRIR obtained with the code ProcessRIR, if 0, not processed DRIR
+filtertype = 'lowpass'  # gain, lowpass, highpass of threshold depending on the files generated in ProcessRIR
 cutoff = 2000
 if filtertype == 'gain':
     processedDRIR_filename = 'DRIRs_processed_' + room + '_pos' + str(position) + '_gain_mix*' + str(increase_factor_window) + '.npz'
+elif filtertype == 'threshold':
+    processedDRIR_filename = 'DRIRs_processed_' + room + '_pos' + str(position) + '_threshold.npz'
 else:
     processedDRIR_filename = 'DRIRs_processed_'+room+'_pos'+str(position)+'_cut'+str(cutoff)+'_'+filtertype+'_zero.npz'
 
@@ -517,8 +520,8 @@ if audiofileConvolve :
         str(position),
         str(processedDRIR),
         room,
-        filtertype,
-        str(cutoff)),
+        filtertype*processedDRIR,
+        str(cutoff)*processedDRIR),
         np.stack((sl_out, sr_out), axis=1), fs_min)
     print('Binauralized signal written')
 

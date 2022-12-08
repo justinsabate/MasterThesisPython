@@ -6,7 +6,7 @@ import soundfile as sf
 import matplotlib.pyplot as plt
 from scipy.signal import fftconvolve
 
-from code_Utils.FilterUtils import firfilter, zerophasefilter, minimumphasefilter, plot_response
+from code_Utils.FilterUtils import firfilter, zerophasefilter, minimumphasefilter, plot_response, thresholdfilter
 from code_Utils.MixTimeUtils import get_direct_index, data_based
 from code_Utils.SamplingUtils import resample_if_needed
 
@@ -22,11 +22,11 @@ start_time = 0
 end_time = 10
 
 # Filtering of early reflections
-method = 'zero'  # mini, zero, fir, gain are the different possibilities
+method = 'threshold'  # mini, zero, fir, gain, threshold are the different possibilities
 gain = 0
 cutoff = 2000
 trans_width = 200  # width of the transition of the filter, in case of fir or mini
-filter_type = 'highpass'
+filter_type = 'lowpass'
 
 '''If h5py file, need to extract a position and a channel form this'''
 
@@ -38,11 +38,11 @@ else:
     measurementFileName = '/Volumes/Transcend/DTU/Thesis/measurements_novdatacode/EigenmikeRecord/CleanedDataset/DataEigenmike_MeetingRoom_25nov_justin_cleaned.hdf5' #truncated file without ref
 
 # dry :
-#   close = position 10; GOOD
+#   close = position 10; GOOD : ABEL mixing time
 #   middle = position 9; GOOD
 #   far  = position 7; BAD (low frequency boost, close to the closet in the room)
 # reverberant :
-#   close = position 6; GOOD
+#   close = position 6; GOOD : ABEL mixing time
 #   middle = position 3; (GOOD but in between)
 #   far = position 0; GOOD
 position = 6  # loudspeaker changing positions 0done,3done,6done in the reverberant room, in the dry room positions 7done,9done,10done have the same characteristics
@@ -99,7 +99,7 @@ if not load_avgmixtime_indextdirect:
 
         print('Chanel nb ' + str(channel) + ', mixing time : ' + str(tmp50) + ' ms, tmp95=' + str(tmp95) + ' ms, t_abel=' + str(t_abel) + ' ms')
 
-    avg_mixtime = np.mean(list_tmp95)
+    avg_mixtime = np.mean(list_t_abel)
 else:
     loaded = np.load('database/' + loadDRIR_filename)
     avg_mixtime = loaded['avg_mixtime']
@@ -117,6 +117,7 @@ for channel in range(len(DRIRs)):
     DRIR = DRIRs[channel]
     tmp95 = avg_mixtime * increase_factor_window  # todo: important  value, to change the size of the window
     indexDirect = list_indexDirect[channel]
+    valMax = np.max(np.abs(DRIR))
 
     tDirect = indexDirect / fs_r
     tmp95_plot = tmp95 * 0.001 + tDirect
@@ -155,6 +156,12 @@ for channel in range(len(DRIRs)):
         print('Minimum phase filtering used')
     elif method == 'gain':
         refl *= gain
+    elif method == 'threshold':
+        if room=='reverberant':
+            threshold = valMax * 0.3  # approximately the ratio of the reverberant tail amplitude to the direct path
+        else:
+            threshold = valMax * 0.05
+        refl = thresholdfilter(refl, threshold)
     else:
         refl = firfilter(refl, fs_r, cutoff, trans_width, filter_type, numtaps=513, plot=plot1)
         print('Simple fir filter used, phase variations expected')
@@ -268,9 +275,12 @@ for channel in range(len(DRIRs)):
 
 if method == 'gain':  # default, not using a filter, just applying a gain
     filename = 'database/DRIRs_processed_'+ room + '_pos' + str(position) + '_' + method + '_mix*' + str(increase_factor_window) + '.npz'  # +str(trans_width)
+elif method== 'threshold':
+    filename = 'database/DRIRs_processed_' + room + '_pos' + str(position) + '_' + method + '.npz'
 else:  # in case a filter is applied, specify which filter and which method
     filename = 'database/DRIRs_processed_' + room +'_pos' + str(position) + '_cut' + str(
         cutoff)  + '_' + filter_type + '_' + method + '.npz'
+
 
 np.savez_compressed(filename,
                     DRIRs_processed=DRIRs_processed,

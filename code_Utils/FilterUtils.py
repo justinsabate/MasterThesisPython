@@ -103,3 +103,14 @@ def minimumphasefilter(x, fs, cutoff, trans_width, filter_type, numtaps=400, plo
         w, h = signal.freqz(b_minimum, [1], worN=2000)
         plot_response(fs, w, h, filter_type + " filter")
     return filtered_x
+
+def thresholdfilter(refl, threshold):
+    win = np.hanning(32)
+    extractor = np.zeros(len(refl))
+    for i, val in enumerate(refl):
+        if abs(val) >= threshold:
+            extractor[i-len(win)//2:i+len(win)//2] += win
+
+    extractor[extractor>1]=1
+    # plt.plot(refl*extractor)
+    return refl*extractor
