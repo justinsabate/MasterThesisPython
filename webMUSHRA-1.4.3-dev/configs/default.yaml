@@ -1,0 +1,161 @@
+# test config mushra page, no waveform, 3 conditions,  looping, anchor35, anchor 70
+
+
+testname: MUSHRA Rate the difference to the reference
+testId: testJustinV1
+bufferSize: 2048
+stopOnErrors: false
+showButtonPreviousPage: true
+remoteService: service/write.php
+
+
+pages:
+    - type: generic
+      id: first_page
+      name: Welcome
+      content: Introduction, training and then experiment, volume high enough
+
+    -
+     - random
+     -
+      - type: mushra
+        id: pos10 dry music
+        content: Compare the different conditions to the reference and rate how similar they are.
+        showWaveform: false
+        enableLooping: true
+        reference: configs/resources/audio/dry/pos10/music/DontMeanAthin_all pos=10 preprocessed=0 room=dry  .wav
+        createAnchor35: false
+        createAnchor70: false
+        randomize: true
+        stimuli:
+            GAIN: configs/resources/audio/dry/pos10/music/DontMeanAthin_all pos=10 preprocessed=1 room=dry gain 2000.wav
+            LOW: configs/resources/audio/dry/pos10/music/DontMeanAthin_all pos=10 preprocessed=1 room=dry lowpass 2000.wav
+            THRESHOLD: configs/resources/audio/dry/pos10/music/DontMeanAthin_all pos=10 preprocessed=1 room=dry threshold 2000.wav
+     -
+      - type: mushra
+        id: pos10 dry speech
+        content: Compare the different conditions to the reference and rate how similar they are.
+        showWaveform: false
+        enableLooping: true
+        reference: configs/resources/audio/dry/pos10/speech/Frequency (english) pos=10 preprocessed=0 room=dry  .wav
+        createAnchor35: false
+        createAnchor70: false
+        randomize: true
+        stimuli:
+            GAIN: configs/resources/audio/dry/pos10/speech/Frequency (english) pos=10 preprocessed=1 room=dry gain 2000.wav
+            LOW: configs/resources/audio/dry/pos10/speech/Frequency (english) pos=10 preprocessed=1 room=dry lowpass 2000.wav
+            THRESHOLD: configs/resources/audio/dry/pos10/speech/Frequency (english) pos=10 preprocessed=1 room=dry threshold 2000.wav
+     -
+      - type: mushra
+        id: pos6 reverb speech
+        content: Compare the different conditions to the reference and rate how similar they are.
+        showWaveform: false
+        enableLooping: true
+        reference: configs/resources/audio/reverb/pos6/speech/Frequency (english) pos=6 preprocessed=0 room=reverberant  .wav
+        createAnchor35: false
+        createAnchor70: false
+        randomize: true
+        stimuli:
+          GAIN: configs/resources/audio/reverb/pos6/speech/Frequency (english) pos=6 preprocessed=1 room=reverberant gain 2000.wav
+          LOW: configs/resources/audio/reverb/pos6/speech/Frequency (english) pos=6 preprocessed=1 room=reverberant lowpass 2000.wav
+          THRESHOLD: configs/resources/audio/reverb/pos6/speech/Frequency (english) pos=6 preprocessed=1 room=reverberant threshold 2000.wav
+     -
+      - type: mushra
+        id: pos6 reverb music
+        content: Compare the different conditions to the reference and rate how similar they are.
+        showWaveform: false
+        enableLooping: true
+        reference: configs/resources/audio/reverb/pos6/music/DontMeanAthin_all pos=6 preprocessed=0 room=reverberant  .wav
+        createAnchor35: false
+        createAnchor70: false
+        randomize: true
+        stimuli:
+          GAIN: configs/resources/audio/reverb/pos6/music/DontMeanAthin_all pos=6 preprocessed=1 room=reverberant gain 2000.wav
+          LOW: configs/resources/audio/reverb/pos6/music/DontMeanAthin_all pos=6 preprocessed=1 room=reverberant lowpass 2000.wav
+          THRESHOLD: configs/resources/audio/reverb/pos6/music/DontMeanAthin_all pos=6 preprocessed=1 room=reverberant threshold 2000.wav
+     -
+      - type: mushra
+        id: pos9 dry speech
+        content: Compare the different conditions to the reference and rate how similar they are.
+        showWaveform: false
+        enableLooping: true
+        reference: configs/resources/audio/dry/pos9/speech/Frequency (english) pos=9 preprocessed=0 room=dry  .wav
+        createAnchor35: false
+        createAnchor70: false
+        randomize: true
+        stimuli:
+          GAIN: configs/resources/audio/dry/pos9/speech/Frequency (english) pos=9 preprocessed=1 room=dry gain 2000.wav
+          LOW: configs/resources/audio/dry/pos9/speech/Frequency (english) pos=9 preprocessed=1 room=dry lowpass 2000.wav
+          THRESHOLD: configs/resources/audio/dry/pos9/speech/Frequency (english) pos=9 preprocessed=1 room=dry threshold 2000.wav
+     -
+      - type: mushra
+        id: pos9 dry music
+        content: Compare the different conditions to the reference and rate how similar they are.
+        showWaveform: false
+        enableLooping: true
+        reference: configs/resources/audio/dry/pos9/music/DontMeanAthin_all pos=9 preprocessed=0 room=dry  .wav
+        createAnchor35: false
+        createAnchor70: false
+        randomize: true
+        stimuli:
+          GAIN: configs/resources/audio/dry/pos9/music/DontMeanAthin_all pos=9 preprocessed=1 room=dry gain 2000.wav
+          LOW: configs/resources/audio/dry/pos9/music/DontMeanAthin_all pos=9 preprocessed=1 room=dry lowpass 2000.wav
+          THRESHOLD: configs/resources/audio/dry/pos9/music/DontMeanAthin_all pos=9 preprocessed=1 room=dry threshold 2000.wav
+     -
+      - type: mushra
+        id: pos0 reverberant speech
+        content: Compare the different conditions to the reference and rate how similar they are.
+        showWaveform: false
+        enableLooping: true
+        reference: configs/resources/audio/reverb/pos0/speech/Frequency (english) pos=0 preprocessed=0 room=reverberant  .wav
+        createAnchor35: false
+        createAnchor70: false
+        randomize: true
+        stimuli:
+          GAIN: configs/resources/audio/reverb/pos0/speech/Frequency (english) pos=0 preprocessed=1 room=reverberant gain 2000.wav
+          LOW: configs/resources/audio/reverb/pos0/speech/Frequency (english) pos=0 preprocessed=1 room=reverberant lowpass 2000.wav
+          THRESHOLD: configs/resources/audio/reverb/pos0/speech/Frequency (english) pos=0 preprocessed=1 room=reverberant threshold 2000.wav
+     -
+      - type: mushra
+        id: pos0 reverb music
+        content: Compare the different conditions to the reference and rate how similar they are.
+        showWaveform: false
+        enableLooping: true
+        reference: configs/resources/audio/reverb/pos0/music/DontMeanAthin_all pos=0 preprocessed=0 room=reverberant  .wav
+        createAnchor35: false
+        createAnchor70: false
+        randomize: true
+        stimuli:
+          GAIN: configs/resources/audio/reverb/pos0/music/DontMeanAthin_all pos=0 preprocessed=1 room=reverberant gain 2000.wav
+          LOW: configs/resources/audio/reverb/pos0/music/DontMeanAthin_all pos=0 preprocessed=1 room=reverberant lowpass 2000.wav
+          THRESHOLD: configs/resources/audio/reverb/pos0/music/DontMeanAthin_all pos=0 preprocessed=1 room=reverberant threshold 2000.wav
+
+    - type: finish
+      name: Thank you
+      content: Thank you for attending
+      popupContent: Your results were saved. The window can be closed
+      showResults: false
+      writeResults: true
+      questionnaire:
+          - type: text
+            label: Name
+            name: name
+          - type: number
+            label: Age
+            name: age
+            min: 0
+            max: 100
+            default: 25
+          - type: likert
+            name: gender
+            label: Gender
+            response:
+              - value: female
+                label: Female
+              - value: male
+                label: Male
+              - value: other
+                label: Other
+          - type: text
+            label: Please tell us more about how you perceived the differences, how would you characterize the differences you could hear between the signals and the reference.
+            name: comments

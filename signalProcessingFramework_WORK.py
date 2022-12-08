@@ -34,7 +34,7 @@ else:
 signal_name = 'Frequency (english)'
 extension = '.wav'
 start_time = 0
-end_time = 90
+end_time = 10
 
 # dry :
 #   close = position 10; GOOD
@@ -60,7 +60,7 @@ loadHnm = 1  # to load or calculate the Hnm coefficients, getting faster results
 
 '''Loading preprocessed (==modified) DRIR or taking the measured one instead'''
 processedDRIR = 0  # to load preprocessed DRIR obtained with the code ProcessRIR, if 0, not processed DRIR
-filtertype = 'lowpass'  # gain, lowpass, highpass of threshold depending on the files generated in ProcessRIR
+filtertype = 'gain'  # gain, lowpass, highpass of threshold depending on the files generated in ProcessRIR
 cutoff = 2000
 if filtertype == 'gain':
     processedDRIR_filename = 'DRIRs_processed_' + room + '_pos' + str(position) + '_gain_mix*' + str(increase_factor_window) + '.npz'

@@ -30,7 +30,7 @@ filter_type = 'lowpass'
 
 '''If h5py file, need to extract a position and a channel form this'''
 
-room = 'reverberant'  #'dry' or 'reverberant'
+room = 'dry'  #'dry' or 'reverberant'
 
 if room == 'dry':
     measurementFileName = './database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
@@ -39,21 +39,21 @@ else:
 
 # dry :
 #   close = position 10; GOOD : ABEL mixing time
-#   middle = position 9; GOOD
+#   middle = position 9; GOOD : ABEL
 #   far  = position 7; BAD (low frequency boost, close to the closet in the room)
 # reverberant :
 #   close = position 6; GOOD : ABEL mixing time
 #   middle = position 3; (GOOD but in between)
-#   far = position 0; GOOD
-position = 6  # loudspeaker changing positions 0done,3done,6done in the reverberant room, in the dry room positions 7done,9done,10done have the same characteristics
-increase_factor_window = 1
+#   far = position 0; GOOD : ABEL
+position = 9  # loudspeaker changing positions 0done,3done,6done in the reverberant room, in the dry room positions 7done,9done,10done have the same characteristics
+increase_factor_window = 1  # parameter to  increase the size of the window extracting early reflections
 
 # channel = 9
 # outputFileName for convolved signal in case it is needed
 outputFileName = '' + method + '_' + filter_type
 
 # Loading mixing time and indextdirect to avoid recalculating them, have to be calculated for the right position for the tdirect
-load_avgmixtime_indextdirect = 1
+load_avgmixtime_indextdirect = 0
 loadDRIR_filename = 'mixtime_'+str(room)+'_pos'+str(position)+'.npz'
 # loadDRIR_filename = 'DRIRs_processed_pos15_cut800_width200_lowpass_zero.npz'
 '''If plain wav file'''
