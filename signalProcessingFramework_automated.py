@@ -21,26 +21,30 @@ from code_plots.plots_functions import plot_HRTF_refinement, plot_radial, plot_f
 N = 4 # maximum with the em32 eigenmike
 
 '''Selection of the measurements'''
-for room in ['dry', 'reverberant']:
+for room in ['dry','reverberant']:
 
     if room == 'dry':
         positions = [9, 10]
+        # positions = [10]
     else:
         positions = [0, 6]
+        # positions = [6]
 
     for position in positions:
 
         # for signal_name in ['Frequency (english)','DontMeanAthin_all']:
-        for signal_name in ['Reinhardt_all', 'The Emperor (danish)', 'Frequency (english)', 'DontMeanAthin_all']:
+        for i,signal_name in enumerate(['Reinhardt_all', 'The Emperor (danish)', 'Frequency (english)', 'DontMeanAthin_all']):
 
             # room = 'dry' #'dry' or 'reverberant'
 
             if room == 'dry':
                 measurementFileName = 'database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
+                max_out = [1.6348721848432668, 2.2581357469111696, 2.3240527509425637, 1.9074752211472386][i]  # For output normalizations
+
             else:
                 # measurementFileName = '/Volumes/Transcend/DTU/Thesis/measurements_novdatacode/EigenmikeRecord/CleanedDataset/DataEigenmike_MeetingRoom_25nov_cleaned.hdf5' # full file with reference too
                 measurementFileName = '/Volumes/Transcend/DTU/Thesis/measurements_novdatacode/EigenmikeRecord/CleanedDataset/DataEigenmike_MeetingRoom_25nov_justin_cleaned.hdf5' #truncated file without ref
-
+                max_out = [8.352107666489198, 5.078845738356131, 6.152484973901738, 5.107540265517482][i] # For output normalizations
             # signal_name = 'DontMeanAthin_all'  # without file extension, in wavfiles folder
             # signal_name = 'Frequency (english)'
             extension = '.wav'
@@ -71,6 +75,7 @@ for room in ['dry', 'reverberant']:
 
             '''Loading preprocessed (==modified) DRIR or taking the measured one instead'''
             for filtertype in ['ref', 'gain', 'lowpass', 'threshold']:
+            # for filtertype in ['ref']:
                 if filtertype == 'ref':
                     processedDRIR = 0
                 else:
@@ -134,6 +139,7 @@ for room in ['dry', 'reverberant']:
                 # positions = [0,1,2,3]
                 # plt.figure()
 
+
                 # for position in positions:
                 if not processedDRIR:
                     print('Loading measured (non modified) DRIR')
@@ -143,6 +149,8 @@ for room in ['dry', 'reverberant']:
                         DRIR = f[measurementgroupkey]['RIRs'][position, :,
                                :]  # RIR, 106 measurements of the 32 positions eigenmike x number of samples
                         # REFs = f[measurementgroupkey]['REFs'][position]
+
+
 
                         MetaDatagroupkey = list(f.keys())[1]
                         fs_r = f[MetaDatagroupkey].attrs['fs']  # Sampling frequency
@@ -171,6 +179,18 @@ for room in ['dry', 'reverberant']:
 
                 ### end of work in progress
 
+                '''Normalization after loading the different files, either modified or not, to be able to compare the 
+                different measurements, maximum values calculated on the closest position between the microphone and the 
+                loudspeaker over all 32 channels '''
+
+                max_reverberant = 0.015  # obtained for position 6, applied to all
+                max_dry = 0.054  # obtained for position 10, applied to all
+
+                if room == 'reverberant':
+                    DRIR = DRIR / max_reverberant
+                else:
+                    DRIR = DRIR / max_dry
+
                 grid = get_eigenmike_grid(plot=False)
                 plot_grid(grid, grid_plot)
 
@@ -197,6 +217,9 @@ for room in ['dry', 'reverberant']:
                 if len(np.shape(s)) > 1:
                     s = (s[0] + s[1]) / 2  # needs to be mono-
                     # s = s[1]
+
+                ### Normalization of the inputs
+                s = s / np.max(abs(s))
 
                 fs_min = min([fs_r, fs_h, fs_s, sampling_frequency])
                 print('Sampling frequency :'+str(fs_min)+' Hz')
@@ -516,19 +539,23 @@ for room in ['dry', 'reverberant']:
 
                 # ## Regular use of it, measured on the position that leads to the biggest output and sets it (it is also
                 # sampling_frequency dependent
-                if audiofileConvolve :
-                    if fs_min == 32000:
-                        max = 0.107  # sampling freq : 32 kHz and damped room and NNFT 4096
-                        # max = 0.01# sampling freq : 32kHz and Meeting room 2 and NFFT 2*4096
-                        # max = 0.05
-                        # max = 0.0001  # sampling freq : 48kHz and Meeting room 2 and NFFT 4*4096
-                    elif fs_min == 48000:
-                        max = 0.209  # sampling freq : 48 kHz
-                    else:
-                        max = 0.209
-                    # needs to be constant to be able to encode the distance (have different gains in different positions)
 
-                    sl_out, sr_out = sl_out / max, sr_out / max
+                '''removed after normalization of the inputs'''
+                # if audiofileConvolve :
+                #     if fs_min == 32000:
+                #         max = 0.107  # sampling freq : 32 kHz and damped room and NNFT 4096
+                #         # max = 0.01# sampling freq : 32kHz and Meeting room 2 and NFFT 2*4096
+                #         # max = 0.05
+                #         # max = 0.0001  # sampling freq : 48kHz and Meeting room 2 and NFFT 4*4096
+                #     elif fs_min == 48000:
+                #         max = 0.209  # sampling freq : 48 kHz
+                #     else:
+                #         max = 0.209
+                #     # needs to be constant to be able to encode the distance (have different gains in different positions)
+                #
+                #     sl_out, sr_out = sl_out / max, sr_out / max
+
+                sl_out, sr_out = sl_out / max_out, sr_out / max_out
 
                 ''' Writing file '''
                 if audiofileConvolve :

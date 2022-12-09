@@ -22,7 +22,7 @@ N = 4 # maximum with the em32 eigenmike
 
 '''Selection of the measurements'''
 
-room = 'reverberant' #'dry' or 'reverberant'
+room = 'dry' #'dry' or 'reverberant'
 
 if room == 'dry':
     measurementFileName = 'database/Measurements-10-oct/DataEigenmikeDampedRoom10oct.hdf5'
@@ -32,8 +32,8 @@ else:
 
 # signal_name = 'DontMeanAthin_all'  # without file extension, in wavfiles folder
 # signal_name = 'Frequency (english)'
-# signal_name = 'Reinhardt_all'
-signal_name = 'The Emperor (danish)'
+signal_name = 'Reinhardt_all'
+# signal_name = 'The Emperor (danish)'
 extension = '.wav'
 start_time = 1.06
 end_time = 9.87
@@ -47,7 +47,7 @@ end_time = 9.87
 #   middle = position 3; (GOOD but in between)
 #   far = position 0; GOOD
 
-position = 6  # position of the measurement that is being used, (position 7 => -23° azimuth for dry environment)
+position = 10  # position of the measurement that is being used, (position 7 => -23° azimuth for dry environment)
 # mixing time increase
 increase_factor_window = 1
 
@@ -61,7 +61,7 @@ rotation_sound_field_deg += offset  # to get it in front for position 7 with off
 loadHnm = 1  # to load or calculate the Hnm coefficients, getting faster results
 
 '''Loading preprocessed (==modified) DRIR or taking the measured one instead'''
-processedDRIR = 1  # to load preprocessed DRIR obtained with the code ProcessRIR, if 0, not processed DRIR
+processedDRIR = 0  # to load preprocessed DRIR obtained with the code ProcessRIR, if 0, not processed DRIR
 filtertype = 'gain'  # gain, lowpass, highpass of threshold depending on the files generated in ProcessRIR
 cutoff = 2000
 if filtertype == 'gain':
@@ -120,6 +120,7 @@ if np.size(rotation_sound_field_deg) > 1:
 # plt.figure()
 
 # for position in positions:
+
 if not processedDRIR:
     print('Loading measured (non modified) DRIR')
     with File(measurementFileName, "r") as f:
@@ -156,6 +157,15 @@ else:
 
 ### end of work in progress
 
+'''Normalization after loading the different files, either modified or not, to be able to compare the different measurements'''
+max_reverberant = 0.015  # for position 6
+max_dry = 0.054  # for position 10
+if room == 'reverberant':
+    DRIR = DRIR / max_reverberant
+else:
+    DRIR = DRIR / max_dry
+
+
 grid = get_eigenmike_grid(plot=False)
 plot_grid(grid, grid_plot)
 
@@ -182,6 +192,10 @@ s, fs_s = load('./wavfiles/' + signal_name + extension, sr=None, mono=True, offs
 if len(np.shape(s)) > 1:
     s = (s[0] + s[1]) / 2  # needs to be mono-
     # s = s[1]
+
+### Normalization of the inputs
+s = s/np.max(abs(s))
+
 
 fs_min = min([fs_r, fs_h, fs_s, sampling_frequency])
 print('Sampling frequency :'+str(fs_min)+' Hz')
@@ -499,23 +513,29 @@ if audiofileConvolve :
 'measurements DataEigenmikeDampedRoom10oct.hdf5, ' \
 'it depends on the resampling, usually if we lower the sampling frequency it has to go up'
 
+' Removed because of normalization of inputs'
+
 # ## Regular use of it, measured on the position that leads to the biggest output and sets it (it is also
 # sampling_frequency dependent
-if audiofileConvolve :
-    if fs_min == 32000:
-        max = 0.107  # sampling freq : 32 kHz and damped room and NNFT 4096
-        # max = 0.01# sampling freq : 32kHz and Meeting room 2 and NFFT 2*4096
-        # max = 0.05
-        # max = 0.0001  # sampling freq : 48kHz and Meeting room 2 and NFFT 4*4096
-    elif fs_min == 48000:
-        max = 0.209  # sampling freq : 48 kHz
-    else:
-        max = 0.209
-    # needs to be constant to be able to encode the distance (have different gains in different positions)
+# if audiofileConvolve :
+#     if fs_min == 32000:
+#         max = 0.107  # sampling freq : 32 kHz and damped room and NNFT 4096
+#         # max = 0.01# sampling freq : 32kHz and Meeting room 2 and NFFT 2*4096
+#         # max = 0.05
+#         # max = 0.0001  # sampling freq : 48kHz and Meeting room 2 and NFFT 4*4096
+#     elif fs_min == 48000:
+#         max = 0.209  # sampling freq : 48 kHz
+#     else:
+#         max = 0.209
+#     # needs to be constant to be able to encode the distance (have different gains in different positions)
 
-    sl_out, sr_out = sl_out / max, sr_out / max
+    # sl_out, sr_out = sl_out / max, sr_out / max
 
 ''' Writing file '''
+# normalization of the output, depending on the signal file, even if it's normalized
+max_out_reverb = np.max(np.abs(sr_out)) #3.21 for first jazz signal 4.7 for pos 6 speech danish,
+max_out_reverb = [3.21, 5.58, 3.74, 4.65]
+max_out_dry = [1.42,2.04,0.95,1.36]
 if audiofileConvolve :
     write('./exports/{0} pos={1} preprocessed={2} room={3} {4} {5}.wav'.format(
         output_file_name,

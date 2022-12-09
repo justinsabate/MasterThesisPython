@@ -13,16 +13,16 @@ pages:
     - type: generic
       id: first_page
       name: Welcome
-      content: Introduction, training and then experiment, volume high enough and not change it
+      content: <p>This is a MUSHRA test.</p> <p>The test is composed of 2 training steps and 8 actual experiment steps. During the training, the principle of a MUSHRA test is illustrated. You can familiarize yourself with the interface and set the volume to a high enough level. During the experiment do not change this level.</p> <p>A MUSHRA test allows you to compare different signals that have been processed in different ways, and your task is to compare the signals to a reference. To do so, you can use the different sliders on the screen, one for each test signal. You can play the signals and change between them as much as you want, even while they are being reproduced. The signals are played in a loop.</p><p> Within the signals you are going to listen to, there is one reference and one anchor that you have to identify. The reference should be rated with a score of 100, since no processing has been applied to it. The anchor should be identified as the most different signal and should be given a score of 0. </p><p>For the rest of the signals, your task is to rate them according to how different they are from the reference. Each trial is independent. A small training is presented to you first, for you to become familiar with this.</p> <h3>Click on "Next" to start the training.</h3>
 
     - type: generic
       id: training
       name: Training
-      content: Introduction, training and then experiment, volume high enough. Think about externalization, room impression, coloration of the signal
+      content: <p>The training consists of 2 steps/trials, with different signals. You can change the volume only during these training steps. Set it to a comfortable loud level and do not change it during the actual experiment.</p><p>The reference and the anchor will be labeled so you can identify them during the training steps.</p><p>When listening to the different signals, try to think about how different they are to the reference in terms of space or coloration (frequency). For example you can think about the impression of space, externalization, room effect on the signal you are hearing, or the differences at high and low frequencies.</p><p>What you will hear are auralizations of different signals in different rooms. This means that the signal is recorded in anechoic conditions and played back as if you were in a room.</p> <h3> Click on "Next" to start the training trials. Feel free to come back to any screen you need with the "Previous" button</h3>
     - type: mushra
       id: training speech
       name: Training trial 1/2
-      content: Compare the different conditions to the reference and rate how similar they are.
+      content: Compare the different conditions to the reference and rate how similar they are, the anchor signal is supposed to be the most different to the reference.
       showWaveform: true
       enableLooping: true
       reference: configs/resources/audio/training/The Emperor (danish) pos=10 preprocessed=0 room=dry  .wav
@@ -32,12 +32,12 @@ pages:
       showConditionNames: true
       stimuli:
           Processing 1: configs/resources/audio/training/The Emperor (danish) pos=10 preprocessed=1 room=dry gain 2000.wav
-          Processing 2: configs/resources/audio/training/The Emperor (danish).wav
+          ANCHOR: configs/resources/audio/training/convolved The Emperor (danish) position=10 channel=0 room =dry.wav
 
     - type: mushra
       id: training music
       name: Training trial 2/2
-      content: Compare the different conditions to the reference and rate how similar they are.
+      content: Compare the different conditions to the reference and rate how similar they are, the anchor signal is supposed to be the most different to the reference.
       showWaveform: true
       enableLooping: true
       reference: configs/resources/audio/training/Reinhardt_all pos=6 preprocessed=0 room=reverberant  .wav
@@ -47,16 +47,17 @@ pages:
       showConditionNames: true
       stimuli:
           Processing 1: configs/resources/audio/training/Reinhardt_all pos=6 preprocessed=1 room=reverberant gain 2000.wav
-          Processing 2: configs/resources/audio/training/Reinhardt_all.wav
+          ANCHOR: configs/resources/audio/training/convolved Reinhardt_all position=6 channel=0 room =reverberant.wav
 
     - type: generic
       id: testintro
-      content: Now the real test
+      content: <p>Now the real test will start. Please do not change the volume from now on.</p><p>The reference will be hidden amongst the processed signals, as well as the anchor. A total of 8 different conditions on 8 successive screens are presented, feel free to come back any time, the slider values are saved if you come back and forth.</p><h3> Click on "Next" to start the training trials. Feel free to come back to any screen you need with the "Previous" button</h3>
     -
      - random
      -
       - type: mushra
         id: pos10 dry music
+        name: Testing (8 independent tests in total)
         content: Compare the different conditions to the reference and rate how similar they are.
         showWaveform: false
         enableLooping: true
@@ -68,9 +69,11 @@ pages:
             GAIN: configs/resources/audio/dry/pos10/music/DontMeanAthin_all pos=10 preprocessed=1 room=dry gain 2000.wav
             LOW: configs/resources/audio/dry/pos10/music/DontMeanAthin_all pos=10 preprocessed=1 room=dry lowpass 2000.wav
             THRESHOLD: configs/resources/audio/dry/pos10/music/DontMeanAthin_all pos=10 preprocessed=1 room=dry threshold 2000.wav
+            ANCHOR: configs/resources/audio/dry/pos10/music/convolved DontMeanAthin_all position=10 channel=0 room =dry.wav
      -
       - type: mushra
         id: pos10 dry speech
+        name: Testing (8 independent tests in total)
         content: Compare the different conditions to the reference and rate how similar they are.
         showWaveform: false
         enableLooping: true
@@ -82,9 +85,11 @@ pages:
             GAIN: configs/resources/audio/dry/pos10/speech/Frequency (english) pos=10 preprocessed=1 room=dry gain 2000.wav
             LOW: configs/resources/audio/dry/pos10/speech/Frequency (english) pos=10 preprocessed=1 room=dry lowpass 2000.wav
             THRESHOLD: configs/resources/audio/dry/pos10/speech/Frequency (english) pos=10 preprocessed=1 room=dry threshold 2000.wav
+            ANCHOR: configs/resources/audio/dry/pos10/speech/convolved Frequency (english) position=10 channel=0 room =dry.wav
      -
       - type: mushra
         id: pos6 reverb speech
+        name: Testing (8 independent tests in total)
         content: Compare the different conditions to the reference and rate how similar they are.
         showWaveform: false
         enableLooping: true
@@ -96,9 +101,11 @@ pages:
           GAIN: configs/resources/audio/reverb/pos6/speech/Frequency (english) pos=6 preprocessed=1 room=reverberant gain 2000.wav
           LOW: configs/resources/audio/reverb/pos6/speech/Frequency (english) pos=6 preprocessed=1 room=reverberant lowpass 2000.wav
           THRESHOLD: configs/resources/audio/reverb/pos6/speech/Frequency (english) pos=6 preprocessed=1 room=reverberant threshold 2000.wav
+          ANCHOR: configs/resources/audio/reverb/pos6/speech/convolved Frequency (english) position=6 channel=0 room =reverberant.wav
      -
       - type: mushra
         id: pos6 reverb music
+        name: Testing (8 independent tests in total)
         content: Compare the different conditions to the reference and rate how similar they are.
         showWaveform: false
         enableLooping: true
@@ -110,9 +117,11 @@ pages:
           GAIN: configs/resources/audio/reverb/pos6/music/DontMeanAthin_all pos=6 preprocessed=1 room=reverberant gain 2000.wav
           LOW: configs/resources/audio/reverb/pos6/music/DontMeanAthin_all pos=6 preprocessed=1 room=reverberant lowpass 2000.wav
           THRESHOLD: configs/resources/audio/reverb/pos6/music/DontMeanAthin_all pos=6 preprocessed=1 room=reverberant threshold 2000.wav
+          ANCHOR: configs/resources/audio/reverb/pos6/music/convolved DontMeanAthin_all position=6 channel=0 room =reverberant.wav
      -
       - type: mushra
         id: pos9 dry speech
+        name: Testing (8 independent tests in total)
         content: Compare the different conditions to the reference and rate how similar they are.
         showWaveform: false
         enableLooping: true
@@ -124,9 +133,11 @@ pages:
           GAIN: configs/resources/audio/dry/pos9/speech/Frequency (english) pos=9 preprocessed=1 room=dry gain 2000.wav
           LOW: configs/resources/audio/dry/pos9/speech/Frequency (english) pos=9 preprocessed=1 room=dry lowpass 2000.wav
           THRESHOLD: configs/resources/audio/dry/pos9/speech/Frequency (english) pos=9 preprocessed=1 room=dry threshold 2000.wav
+          ANCHOR: configs/resources/audio/dry/pos9/speech/convolved Frequency (english) position=9 channel=0 room =dry.wav
      -
       - type: mushra
         id: pos9 dry music
+        name: Testing (8 independent tests in total)
         content: Compare the different conditions to the reference and rate how similar they are.
         showWaveform: false
         enableLooping: true
@@ -138,9 +149,11 @@ pages:
           GAIN: configs/resources/audio/dry/pos9/music/DontMeanAthin_all pos=9 preprocessed=1 room=dry gain 2000.wav
           LOW: configs/resources/audio/dry/pos9/music/DontMeanAthin_all pos=9 preprocessed=1 room=dry lowpass 2000.wav
           THRESHOLD: configs/resources/audio/dry/pos9/music/DontMeanAthin_all pos=9 preprocessed=1 room=dry threshold 2000.wav
+          ANCHOR: configs/resources/audio/dry/pos9/music/convolved DontMeanAthin_all position=9 channel=0 room =dry.wav
      -
       - type: mushra
-        id: pos0 reverberant speech
+        id: pos0 reverb speech
+        name: Testing (8 independent tests in total)
         content: Compare the different conditions to the reference and rate how similar they are.
         showWaveform: false
         enableLooping: true
@@ -152,9 +165,11 @@ pages:
           GAIN: configs/resources/audio/reverb/pos0/speech/Frequency (english) pos=0 preprocessed=1 room=reverberant gain 2000.wav
           LOW: configs/resources/audio/reverb/pos0/speech/Frequency (english) pos=0 preprocessed=1 room=reverberant lowpass 2000.wav
           THRESHOLD: configs/resources/audio/reverb/pos0/speech/Frequency (english) pos=0 preprocessed=1 room=reverberant threshold 2000.wav
+          ANCHOR: configs/resources/audio/reverb/pos0/speech/convolved Frequency (english) position=0 channel=0 room =reverberant.wav
      -
       - type: mushra
         id: pos0 reverb music
+        name: Testing (8 independent tests in total)
         content: Compare the different conditions to the reference and rate how similar they are.
         showWaveform: false
         enableLooping: true
@@ -166,10 +181,11 @@ pages:
           GAIN: configs/resources/audio/reverb/pos0/music/DontMeanAthin_all pos=0 preprocessed=1 room=reverberant gain 2000.wav
           LOW: configs/resources/audio/reverb/pos0/music/DontMeanAthin_all pos=0 preprocessed=1 room=reverberant lowpass 2000.wav
           THRESHOLD: configs/resources/audio/reverb/pos0/music/DontMeanAthin_all pos=0 preprocessed=1 room=reverberant threshold 2000.wav
+          ANCHOR: configs/resources/audio/reverb/pos0/music/convolved DontMeanAthin_all position=0 channel=0 room =reverberant.wav
 
     - type: finish
       name: Thank you
-      content: Thank you for attending
+      content: Thank you for helping me in my thesis. Please enter those few pieces of information and save the results.
       popupContent: Your results were saved. The window can be closed
       showResults: false
       writeResults: true
@@ -193,6 +209,11 @@ pages:
                 label: Male
               - value: other
                 label: Other
-          - type: text
-            label: Please tell us more about how you perceived the differences, how would you characterize the differences you could hear between the signals and the reference.
-            name: comments
+          - type: likert
+            name: impairement
+            label: <p>Hearing impairment (for example known hearing loss or tinnitus).</p> <p>If yes, specify to Justin after the test</p>
+            response:
+              - value: no
+                label: No
+              - value: yes
+                label: Yes
