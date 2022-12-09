@@ -18,26 +18,12 @@ pages:
     - type: generic
       id: training
       name: Training
-      content: <p>The training consists of 2 steps/trials, with different signals. You can change the volume only during these training steps. Set it to a comfortable loud level and do not change it during the actual experiment.</p><p>The reference and the anchor will be labeled so you can identify them during the training steps.</p><p>When listening to the different signals, try to think about how different they are to the reference in terms of space or coloration (frequency). For example you can think about the impression of space, externalization, room effect on the signal you are hearing, or the differences at high and low frequencies.</p><p>What you will hear are auralizations of different signals in different rooms. This means that the signal is recorded in anechoic conditions and played back as if you were in a room.</p> <h3> Click on "Next" to start the training trials. Feel free to come back to any screen you need with the "Previous" button</h3>
-    - type: mushra
-      id: training speech
-      name: Training trial 1/2
-      content: Compare the different conditions to the reference and rate how similar they are, the anchor signal is supposed to be the most different to the reference.
-      showWaveform: true
-      enableLooping: true
-      reference: configs/resources/audio/training/The Emperor (danish) pos=10 preprocessed=0 room=dry  .wav
-      createAnchor35: false
-      createAnchor70: false
-      randomize: false
-      showConditionNames: true
-      stimuli:
-          Processing 1: configs/resources/audio/training/The Emperor (danish) pos=10 preprocessed=1 room=dry gain 2000.wav
-          ANCHOR: configs/resources/audio/training/convolved The Emperor (danish) position=10 channel=0 room =dry.wav
+      content: <p>The training consists of 1 step/trial. You can change the volume only during this training step. Set it to a comfortable loud level and do not change it during the actual experiment.</p><p>The reference and the anchor will be labeled so you can identify them during the training step.</p><p>When listening to the different signals, try to think about how different they are to the reference in terms of space or coloration (frequency). For example you can think about the impression of space, externalization, room effect, room size on the signal you are hearing, or the differences at high and low frequencies.</p><p>What you will hear are auralizations of different signals in different rooms. This means that the signal is recorded in anechoic conditions and played back as if you were in a room.</p> <h3> Click on "Next" to start the training trial. Feel free to come back to any screen you need with the "Previous" button</h3>
 
     - type: mushra
       id: training music
-      name: Training trial 2/2
-      content: Compare the different conditions to the reference and rate how similar they are, the anchor signal is supposed to be the most different to the reference.
+      name: Training trial
+      content: Compare the different conditions to the reference and rate them. You should evaluate the difference between the conditions and the reference, not how good it sounds to you. The anchor signal is supposed to be the most different to the reference, then you should rate it 0. It is ok to set multiple conditions to 100 if you cannot perceive any difference with the reference.
       showWaveform: true
       enableLooping: true
       reference: configs/resources/audio/training/Reinhardt_all pos=6 preprocessed=0 room=reverberant  .wav
@@ -58,7 +44,7 @@ pages:
       - type: mushra
         id: pos10 dry music
         name: Testing (8 independent tests in total)
-        content: Compare the different conditions to the reference and rate how similar they are.
+        content: Compare the different conditions to the reference and rate them. You should evaluate the difference between the conditions and the reference, not how good it sounds to you. The anchor signal is supposed to be the most different to the reference, then you should rate it 0. It is ok to set multiple conditions to 100 if you cannot perceive any difference with the reference.
         showWaveform: false
         enableLooping: true
         reference: configs/resources/audio/dry/pos10/music/DontMeanAthin_all pos=10 preprocessed=0 room=dry  .wav
@@ -74,7 +60,7 @@ pages:
       - type: mushra
         id: pos10 dry speech
         name: Testing (8 independent tests in total)
-        content: Compare the different conditions to the reference and rate how similar they are.
+        content: Compare the different conditions to the reference and rate them. You should evaluate the difference between the conditions and the reference, not how good it sounds to you. The anchor signal is supposed to be the most different to the reference, then you should rate it 0. It is ok to set multiple conditions to 100 if you cannot perceive any difference with the reference.
         showWaveform: false
         enableLooping: true
         reference: configs/resources/audio/dry/pos10/speech/Frequency (english) pos=10 preprocessed=0 room=dry  .wav
@@ -90,7 +76,7 @@ pages:
       - type: mushra
         id: pos6 reverb speech
         name: Testing (8 independent tests in total)
-        content: Compare the different conditions to the reference and rate how similar they are.
+        content: Compare the different conditions to the reference and rate them. You should evaluate the difference between the conditions and the reference, not how good it sounds to you. The anchor signal is supposed to be the most different to the reference, then you should rate it 0. It is ok to set multiple conditions to 100 if you cannot perceive any difference with the reference.
         showWaveform: false
         enableLooping: true
         reference: configs/resources/audio/reverb/pos6/speech/Frequency (english) pos=6 preprocessed=0 room=reverberant  .wav
@@ -106,7 +92,7 @@ pages:
       - type: mushra
         id: pos6 reverb music
         name: Testing (8 independent tests in total)
-        content: Compare the different conditions to the reference and rate how similar they are.
+        content: Compare the different conditions to the reference and rate them. You should evaluate the difference between the conditions and the reference, not how good it sounds to you. The anchor signal is supposed to be the most different to the reference, then you should rate it 0. It is ok to set multiple conditions to 100 if you cannot perceive any difference with the reference.
         showWaveform: false
         enableLooping: true
         reference: configs/resources/audio/reverb/pos6/music/DontMeanAthin_all pos=6 preprocessed=0 room=reverberant  .wav
@@ -122,7 +108,7 @@ pages:
       - type: mushra
         id: pos9 dry speech
         name: Testing (8 independent tests in total)
-        content: Compare the different conditions to the reference and rate how similar they are.
+        content: Compare the different conditions to the reference and rate them. You should evaluate the difference between the conditions and the reference, not how good it sounds to you. The anchor signal is supposed to be the most different to the reference, then you should rate it 0. It is ok to set multiple conditions to 100 if you cannot perceive any difference with the reference.
         showWaveform: false
         enableLooping: true
         reference: configs/resources/audio/dry/pos9/speech/Frequency (english) pos=9 preprocessed=0 room=dry  .wav
@@ -138,7 +124,7 @@ pages:
       - type: mushra
         id: pos9 dry music
         name: Testing (8 independent tests in total)
-        content: Compare the different conditions to the reference and rate how similar they are.
+        content: Compare the different conditions to the reference and rate them. You should evaluate the difference between the conditions and the reference, not how good it sounds to you. The anchor signal is supposed to be the most different to the reference, then you should rate it 0. It is ok to set multiple conditions to 100 if you cannot perceive any difference with the reference.
         showWaveform: false
         enableLooping: true
         reference: configs/resources/audio/dry/pos9/music/DontMeanAthin_all pos=9 preprocessed=0 room=dry  .wav
@@ -154,7 +140,7 @@ pages:
       - type: mushra
         id: pos0 reverb speech
         name: Testing (8 independent tests in total)
-        content: Compare the different conditions to the reference and rate how similar they are.
+        content: Compare the different conditions to the reference and rate them. You should evaluate the difference between the conditions and the reference, not how good it sounds to you. The anchor signal is supposed to be the most different to the reference, then you should rate it 0. It is ok to set multiple conditions to 100 if you cannot perceive any difference with the reference.
         showWaveform: false
         enableLooping: true
         reference: configs/resources/audio/reverb/pos0/speech/Frequency (english) pos=0 preprocessed=0 room=reverberant  .wav
@@ -170,7 +156,7 @@ pages:
       - type: mushra
         id: pos0 reverb music
         name: Testing (8 independent tests in total)
-        content: Compare the different conditions to the reference and rate how similar they are.
+        content: Compare the different conditions to the reference and rate them. You should evaluate the difference between the conditions and the reference, not how good it sounds to you. The anchor signal is supposed to be the most different to the reference, then you should rate it 0. It is ok to set multiple conditions to 100 if you cannot perceive any difference with the reference.
         showWaveform: false
         enableLooping: true
         reference: configs/resources/audio/reverb/pos0/music/DontMeanAthin_all pos=0 preprocessed=0 room=reverberant  .wav
@@ -185,7 +171,7 @@ pages:
 
     - type: finish
       name: Thank you
-      content: Thank you for helping me in my thesis. Please enter those few pieces of information and save the results.
+      content: Thank you for helping me in my thesis. Please enter those pieces of information about you and save the results.
       popupContent: Your results were saved. The window can be closed
       showResults: false
       writeResults: true
